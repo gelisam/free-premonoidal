@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, DataKinds, PolyKinds, TypeFamilies, TypeOperators, UndecidableInstances #-}
+{-# LANGUAGE ConstraintKinds, GADTs, DataKinds, PolyKinds, TypeFamilies, TypeOperators, UndecidableInstances #-}
 module FreeCategories where
 
 import Prelude hiding (id, (.))
@@ -45,19 +45,23 @@ data MEmbed k a b where
   MMiddle :: k a b -> MEmbed k (x,(a,y)) (x,(b,y))
 
 -- the M stands for "morphism"
-data MList t k a b where
-  MNil  :: t a a'
-        -> MList t k a a'
-  MCons :: t a a'
-        -> k a' b
-        -> MList t k b c
-        -> MList t k a c
+data MList t k pas pbs where
+  MNil  :: t ta tb
+        => MList t k ta tb
+  MCons :: t tb tb'
+        => SplitTree a ta
+        -> k a b
+        -> SplitTree b tb
+        -> MList t k tb' tc
+        -> MList t k ta tc
 
-data MNonEmpty t k a b where
-  MNonEmpty :: t a a'
-            -> k a' b
-            -> MList t k b c
-            -> MNonEmpty t k a c
+data MNonEmpty t k ta tb where
+  MNonEmpty :: t tb tb'
+            => SplitTree a ta
+            -> k a b
+            -> SplitTree b tb
+            -> MList t k tb' tc
+            -> MNonEmpty t k ta tc
 
 
 type family Concat (as1 :: [k])
@@ -102,25 +106,25 @@ type family TreeHasSuperfluousSplits (ta :: Tree k)
   -- undefined if the lists have a different number of leaves
 
 
--- bifunctorial category
-data BifTransition a b where
-  BifTransition :: TreeHasSuperfluousSplits ta tb ~ 'False
-                => SplitTree a ta
-                -> SplitTree b tb
-                -> BifTransition a b
-
-type FreeBif k = MList BifTransition (MEmbed k)
-
-instance Category BifTransition where
-  id = BifTransition NoSplit NoSplit
-  BifTransition sb' sc . BifTransition sa sb =
-    BifTransition sa sc
-
-
-twoMorphisms :: k (a1,a2) (b1,b2) -> k (b1,b2) (c1,c2) -> FreeBif k (a1,a2) (c1,c2)
-twoMorphisms f g = MCons (BifTransition NoSplit NoSplit) (MWhole f)
-                 $ MCons (BifTransition NoSplit NoSplit) (MWhole g)
-                 $ MNil (BifTransition NoSplit NoSplit)
+-- -- bifunctorial category
+-- data BifTransition a b where
+--   BifTransition :: TreeHasSuperfluousSplits ta tb ~ 'False
+--                 => SplitTree a ta
+--                 -> SplitTree b tb
+--                 -> BifTransition a b
+-- 
+-- type FreeBif k = MList BifTransition (MEmbed k)
+-- 
+-- instance Category BifTransition where
+--   id = BifTransition NoSplit NoSplit
+--   BifTransition sb' sc . BifTransition sa sb =
+--     BifTransition sa sc
+-- 
+-- 
+-- twoMorphisms :: k (a1,a2) (b1,b2) -> k (b1,b2) (c1,c2) -> FreeBif k (a1,a2) (c1,c2)
+-- twoMorphisms f g = MCons (BifTransition NoSplit NoSplit) (MWhole f)
+--                  $ MCons (BifTransition NoSplit NoSplit) (MWhole g)
+--                  $ MNil (BifTransition NoSplit NoSplit)
 
 
 
