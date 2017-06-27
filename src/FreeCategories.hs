@@ -30,6 +30,29 @@ data SplitTree (a  :: Type)
                                        (ReparentLeaf 'R tb2))
 
 
+type family Prefix (as1 :: [k])
+                   (as2 :: [k])
+                :: Bool where
+ Prefix '[]        _          = 'True
+ Prefix (a ': as1) (a ': as2) = Prefix as1 as2
+ Prefix _          _          = 'False
+
+data Substring (as1 :: [k])
+               (as2 :: [k]) where
+  SHere  :: Prefix as1 as2 ~ 'True
+         => Substring as1 as2
+  SThere :: Substring as1 as2
+         -> Substring as1 (a ': as2)
+
+data Subsequence (as1 :: [k])
+                 (as2 :: [k]) where
+  Done :: Subsequence '[] '[]
+  Skip :: Subsequence as1 as2
+       -> Subsequence as1 (a ': as2)
+  Keep :: Subsequence as1 as2
+       -> Subsequence (a ': as1) (a ': as2)
+
+
 data MEmbed k a b where
   MWhole  :: k a b -> MEmbed k a b
   MLeft   :: k a b -> MEmbed k (a,x) (b,x)
@@ -38,8 +61,8 @@ data MEmbed k a b where
 
 -- the M stands for "morphism"
 data MList t k pas pbs where
-  MNil  :: t ta tb
-        => MList t k ta tb
+  MNil  :: t pas pbs
+        => MList t k pas pbs
   MCons :: t tb tb'
         => SplitTree a ta
         -> k a b
