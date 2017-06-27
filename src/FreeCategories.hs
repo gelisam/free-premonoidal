@@ -1,6 +1,8 @@
 {-# LANGUAGE GADTs, DataKinds, PolyKinds, TypeFamilies, TypeOperators, UndecidableInstances #-}
 module FreeCategories where
 
+import Prelude hiding (id, (.))
+import Control.Category
 import Data.Kind (Type)
 
 
@@ -35,6 +37,12 @@ data SplitTree (a  :: Type)
           -> SplitTree a2 tb2
           -> SplitTree (a1,a2) (MkBranch tb1 tb2)
 
+
+data MEmbed k a b where
+  MWhole  :: k a b -> MEmbed k a b
+  MLeft   :: k a b -> MEmbed k (a,x) (b,x)
+  MRight  :: k a b -> MEmbed k (x,a) (x,b)
+  MMiddle :: k a b -> MEmbed k (x,(a,y)) (x,(b,y))
 
 -- the M stands for "morphism"
 data MList t k a b where
@@ -94,10 +102,6 @@ type family TreeHasSuperfluousSplits (ta :: Tree k)
   -- undefined if the lists have a different number of leaves
 
 
--- type FreeSemi = MNonEmpty 
-
---data Embed k a b where
-
 -- bifunctorial category
 data BifTransition a b where
   BifTransition :: TreeHasSuperfluousSplits ta tb ~ 'False
@@ -105,13 +109,21 @@ data BifTransition a b where
                 -> SplitTree b tb
                 -> BifTransition a b
 
-type FreeBif = MList BifTransition
+type FreeBif k = MList BifTransition (MEmbed k)
+
+instance Category BifTransition where
+  id = BifTransition NoSplit NoSplit
+  BifTransition sb' sc . BifTransition sa sb =
+    BifTransition sa sc
 
 
 twoMorphisms :: k (a1,a2) (b1,b2) -> k (b1,b2) (c1,c2) -> FreeBif k (a1,a2) (c1,c2)
-twoMorphisms f g = MCons (BifTransition NoSplit NoSplit) f
-                 $ MCons (BifTransition NoSplit NoSplit) g
+twoMorphisms f g = MCons (BifTransition NoSplit NoSplit) (MWhole f)
+                 $ MCons (BifTransition NoSplit NoSplit) (MWhole g)
                  $ MNil (BifTransition NoSplit NoSplit)
+
+
+
 
 
 data PickOne (as :: [k])
