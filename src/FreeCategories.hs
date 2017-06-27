@@ -30,20 +30,23 @@ data SplitTree (a  :: Type)
                                        (ReparentLeaf 'R tb2))
 
 
-type family Prefix (as1 :: [k])
-                   (as2 :: [k])
-                :: Bool where
- Prefix '[]        _          = 'True
- Prefix (a ': as1) (a ': as2) = Prefix as1 as2
- Prefix _          _          = 'False
+-- is as2 a prefix of as1?
+type family IsPrefix (as1 :: [k])
+                     (as2 :: [k])
+                  :: Bool where
+ IsPrefix _          '[]        = 'True
+ IsPrefix (a ': as1) (a ': as2) = IsPrefix as1 as2
+ IsPrefix _          _          = 'False
 
+-- can we obtain as2 by deleting a prefix and a suffix from as1?
 data Substring (as1 :: [k])
                (as2 :: [k]) where
-  SHere  :: Prefix as1 as2 ~ 'True
+  SHere  :: IsPrefix as1 as2 ~ 'True
          => Substring as1 as2
   SThere :: Substring as1 as2
-         -> Substring as1 (a ': as2)
+         -> Substring (a ': as1) as2
 
+-- can we obtain as2 by deleting some elements from as1?
 data Subsequence (as1 :: [k])
                  (as2 :: [k]) where
   Done :: Subsequence '[] '[]
@@ -51,6 +54,23 @@ data Subsequence (as1 :: [k])
        -> Subsequence as1 (a ': as2)
   Keep :: Subsequence as1 as2
        -> Subsequence (a ': as1) (a ': as2)
+
+-- can we obtain as2 by reordering the elements of as1?
+data Permutation (as1 :: [k])
+                 (as2 :: [k]) where
+  -- TODO
+
+-- can we obtain as2 by deleting some elements of as1 and reordering the rest?
+data Subset (as1 :: [k])
+            (as2 :: [k]) where
+  Subset :: Subsequence as2 as3
+         -> Permutation as1 as2
+         -> Subset as1 as3
+
+-- can we obtain as2 by each element of as1 zero or more times in some order?
+data Multisubset (as1 :: [k])
+                 (as2 :: [k]) where
+  -- TODO
 
 
 data MEmbed k a b where
