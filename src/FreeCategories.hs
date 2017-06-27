@@ -9,33 +9,25 @@ import Data.Kind (Type)
 data Parent a
   = L  a  -- ^ left  child of parent
   | R  a  -- ^ right child of parent
-
-data Subtree a
-  = Leaf (Parent a)
-  | Branch (Subtree a) (Subtree a)
+  | NA a  -- ^ n/a, not a children
 
 data Tree a
-  = Singleton a
-  | Root (Subtree a) (Subtree a)
+  = Leaf (Parent a)
+  | Branch (Tree a) (Tree a)
 
-type family AnnotateParent (p  :: k -> Parent k)
-                           (ta :: Tree k)
-                        :: Subtree k where
-  AnnotateParent p ('Singleton a)  = 'Leaf (p a)
-  AnnotateParent _ ('Root ta1 ta2) = 'Branch ta1 ta2
-
-type family MkBranch (ta1 :: Tree k)
-                     (ta2 :: Tree k)
-                  :: Tree k where
-  MkBranch ta1 ta2 = 'Root (AnnotateParent 'L ta1)
-                           (AnnotateParent 'R ta2)
+type family ReparentLeaf (p  :: k -> Parent k)
+                         (ta :: Tree k)
+                      :: Tree k where
+  ReparentLeaf p ('Leaf ('NA a))   = 'Leaf (p a)
+  ReparentLeaf _ ('Branch ta1 ta2) = 'Branch ta1 ta2
 
 data SplitTree (a  :: Type)
                (tb :: Tree Type) where
-  NoSplit :: SplitTree a ('Singleton a)
+  NoSplit :: SplitTree a ('Leaf ('NA a))
   Split   :: SplitTree a1 tb1
           -> SplitTree a2 tb2
-          -> SplitTree (a1,a2) (MkBranch tb1 tb2)
+          -> SplitTree (a1,a2) (Branch (ReparentLeaf 'L tb1)
+                                       (ReparentLeaf 'R tb2))
 
 
 data MEmbed k a b where
@@ -70,40 +62,25 @@ type family Concat (as1 :: [k])
   Concat '[]        as2 = as2
   Concat (a ': as1) as2 = a ': Concat as1 as2
 
-type family FlattenSubtree (ta :: Subtree k)
-                        :: [Parent k] where
-  FlattenSubtree ('Leaf pa)        = '[pa]
-  FlattenSubtree ('Branch ta1 ta2) = Concat (FlattenSubtree ta1)
-                                            (FlattenSubtree ta2)
+type family Flatten (ta :: Tree k)
+                 :: [Parent k] where
+  Flatten ('Leaf pa)        = '[pa]
+  Flatten ('Branch ta1 ta2) = Concat (Flatten ta1)
+                                     (Flatten ta2)
 
 type family MapUnparent (pas :: [Parent k])
                      :: [k] where
   MapUnparent '[]          = '[]
   MapUnparent (p a ': pas) = a ': MapUnparent pas
 
-type family FlattenTree (ta :: Tree k)
-                     :: [k] where
-  FlattenTree ('Singleton a)  = '[a]
-  FlattenTree ('Root ta1 ta2) = Concat (MapUnparent (FlattenSubtree ta1))
-                                       (MapUnparent (FlattenSubtree ta2))
 
-
-type family ListHasSuperfluousSplits (pas :: [Parent k])
-                                     (pbs :: [Parent k])
-                                  :: Bool where
-  ListHasSuperfluousSplits '[] '[]  = 'False
-  ListHasSuperfluousSplits ('L _ ': 'R _ ': pas) ('L _ ': 'R _ ': pbs) = 'True
-  ListHasSuperfluousSplits (_ ': pas) (_ ': pbs) = ListHasSuperfluousSplits pas pbs
+type family HasSuperfluousSplits (pas :: [Parent k])
+                                 (pbs :: [Parent k])
+                              :: Bool where
+  HasSuperfluousSplits '[] '[]  = 'False
+  HasSuperfluousSplits ('L _ ': 'R _ ': pas) ('L _ ': 'R _ ': pbs) = 'True
+  HasSuperfluousSplits (_ ': pas) (_ ': pbs) = HasSuperfluousSplits pas pbs
   -- undefined if the lists have different lengths
-
-type family TreeHasSuperfluousSplits (ta :: Tree k)
-                                     (tb :: Tree k)
-                                  :: Bool where
-  TreeHasSuperfluousSplits ('Singleton _)  ('Singleton _)  = 'False
-  TreeHasSuperfluousSplits ('Root ta1 ta2) ('Root tb1 tb2) =
-    ListHasSuperfluousSplits (Concat (FlattenSubtree ta1) (FlattenSubtree ta2))
-                             (Concat (FlattenSubtree tb1) (FlattenSubtree tb2))
-  -- undefined if the lists have a different number of leaves
 
 
 -- -- bifunctorial category
