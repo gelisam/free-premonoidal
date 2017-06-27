@@ -73,12 +73,6 @@ data Multisubset (as1 :: [k])
   -- TODO
 
 
-data MEmbed k a b where
-  MWhole  :: k a b -> MEmbed k a b
-  MLeft   :: k a b -> MEmbed k (a,x) (b,x)
-  MRight  :: k a b -> MEmbed k (x,a) (x,b)
-  MMiddle :: k a b -> MEmbed k (x,(a,y)) (x,(b,y))
-
 -- the M stands for "morphism"
 data MList t k pas pbs where
   MNil  :: t pas pbs
