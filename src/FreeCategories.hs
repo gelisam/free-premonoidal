@@ -30,47 +30,55 @@ data SplitTree (a  :: Type)
                                        (ReparentLeaf 'R tb2))
 
 
--- is as2 a prefix of as1?
-type family IsPrefix (as1 :: [k])
-                     (as2 :: [k])
-                  :: Bool where
- IsPrefix _          '[]        = 'True
- IsPrefix (a ': as1) (a ': as2) = IsPrefix as1 as2
- IsPrefix _          _          = 'False
+-- divide @as@ into two parts, @as1@ and @as2@, which can be concatenated to obtain @as@ back
+data SplitList (as  :: [k])
+               (as1 :: [k])
+               (as2 :: [k]) where
+  Here  :: SplitList abc         '[]       abc
+  There :: SplitList bcde        bc        de
+        -> SplitList (a ': bcde) (a ': bc) de
 
--- can we obtain as2 by deleting a prefix and a suffix from as1?
+-- is @a@ an element of @as@?
+data Elem (as :: [k])
+          (a  :: k) where
+  Elem :: SplitList abcde ab (c ': de)
+       -> Elem abcde c
+
+-- can we obtain @as2@ by deleting a prefix and a suffix from @as1@?
 data Substring (as1 :: [k])
                (as2 :: [k]) where
-  SHere  :: IsPrefix as1 as2 ~ 'True
-         => Substring as1 as2
-  SThere :: Substring as1 as2
-         -> Substring (a ': as1) as2
+  Substring :: SplitList abcdef ab cdef
+            -> SplitList cdef   cd ef
+            -> Substring abcdef cd
 
--- can we obtain as2 by deleting some elements from as1?
+-- can we obtain @as2@ by deleting some elements from @as1@?
 data Subsequence (as1 :: [k])
                  (as2 :: [k]) where
-  Done :: Subsequence '[] '[]
-  Skip :: Subsequence as1 as2
-       -> Subsequence as1 (a ': as2)
-  Keep :: Subsequence as1 as2
-       -> Subsequence (a ': as1) (a ': as2)
+  Done :: Subsequence '[]          '[]
+  Skip :: Subsequence bcdef        ce
+       -> Subsequence (a ': bcdef) ce
+  Keep :: Subsequence bcdef        ce
+       -> Subsequence (a ': bcdef) (a ': ce)
 
--- can we obtain as2 by reordering the elements of as1?
+-- can we obtain @as2@ by using each element of @as1@ zero or more times in some order?
+data Multisubset (as1 :: [k])
+                 (as2 :: [k]) where
+  MultiNil  :: Multisubset abc '[]
+  MultiCons :: Elem abcdef b
+            -> Multisubset abcdef aafbba
+            -> Multisubset abcdef (b ': aafbba)
+
+-- can we obtain @as2@ by reordering the elements of @as1@?
 data Permutation (as1 :: [k])
                  (as2 :: [k]) where
   -- TODO
 
--- can we obtain as2 by deleting some elements of as1 and reordering the rest?
+-- can we obtain @as2@ by deleting some elements of @as1@ and reordering the rest?
 data Subset (as1 :: [k])
             (as2 :: [k]) where
-  Subset :: Subsequence as2 as3
-         -> Permutation as1 as2
-         -> Subset as1 as3
-
--- can we obtain as2 by each element of as1 zero or more times in some order?
-data Multisubset (as1 :: [k])
-                 (as2 :: [k]) where
-  -- TODO
+  Subset :: Subsequence abcde bd
+         -> Permutation bd db
+         -> Subset abcde db
 
 
 -- the M stands for "morphism"
@@ -142,19 +150,6 @@ type family HasSuperfluousSplits (pas :: [Parent k])
 
 
 
-
-
-data PickOne (as :: [k])
-             (b  :: k) where
-  Here  :: PickOne (a ': as) a
-  There :: PickOne as b -> PickOne (a ': as) b
-
-data PickMany (as :: [k])
-              (bs :: [k]) where
-  PickNil  :: PickMany as '[]
-  PickCons :: PickOne as b
-           -> PickMany as bs
-           -> PickMany as (b ': bs)
 
 
 -- semigroupoid
