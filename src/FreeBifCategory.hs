@@ -1,5 +1,5 @@
 {-# LANGUAGE ConstraintKinds, GADTs, DataKinds, PolyKinds, TypeFamilies, TypeOperators, UndecidableInstances #-}
-module FreeCategories where
+module FreeBifCategory where
 
 import Prelude hiding (id, (.))
 import Control.Category
@@ -147,22 +147,3 @@ type family HasSuperfluousSplits (pas :: [Parent k])
 -- twoMorphisms f g = MCons (BifTransition NoSplit NoSplit) (MWhole f)
 --                  $ MCons (BifTransition NoSplit NoSplit) (MWhole g)
 --                  $ MNil (BifTransition NoSplit NoSplit)
-
-
-
-
-
--- semigroupoid
--- category
--- bifunctorial
--- associative
--- monoidal
--- linear
--- affine
--- cartesian
-
---type Permutation as bs
-
-
-main :: IO ()
-main = putStrLn "typechecks."
