@@ -65,6 +65,48 @@ instance Bif (FreeBif2 k) where
   Nil2         *** Cons2 f2 fs2 = Cons2 (Par2 Id2 f2)  (Nil2 *** fs2)
   Cons2 f1 fs1 *** Nil2         = Cons2 (Par2 f1  Id2) (fs1  *** Nil2)
 
+-- One problem with that attempt is that we can write the same identity
+-- morphism in more than one way:
+--
+-- > Par2 Id2 Id2 `Cons2` Par2 Id2 Id2 `Cons2` Nil2 !=
+-- > Par2 Id2 Id2 `Cons2` Nil2 !=
+-- > Nil2
+--
+-- Clearly, we should not allow 'Layer2' values containing only 'Id2's. We do
+-- do need to be able to represent @Par2 (Embed2 f) Id2@,
+-- @Par2 Id2 (Embed2 g)@, and @Par2 (Embed2 f) (Embed2 g)@, but we don't want
+-- to support @Par2 Id2 Id2@. One way to do that is to split the 'Par2'
+-- constructor into four pieces, one for each combination of (the left argument
+-- is 'Id2', the left argument is not 'Id2') x (the right argument is 'Id2',
+-- the right argument is not 'Id2'), and to drop the unwanted piece in which
+-- both arguments are 'Id2'.
+--
+-- Here is a third attempt which uses that approach:
+
+data FreeBif3 k a b where
+  Nil3  :: FreeBif3 k a a
+  Cons3 :: Layer3 k a b -> FreeBif3 k b c -> FreeBif3 k a c
+
+data Layer3 k a b where
+  Embed3     :: k a b -> Layer3 k a b
+  LeftSide3  :: Layer3 k a1 b1                   -> Layer3 k (a1, a2) (b1, b2)
+  RightSide3 ::                   Layer3 k a2 b2 -> Layer3 k (a1, a2) (b1, b2)
+  BothSides3 :: Layer3 k a1 b1 -> Layer3 k a2 b2 -> Layer3 k (a1, a2) (b1, b2)
+
+instance Category (FreeBif3 k) where
+  id = Nil3
+  (.) = flip go
+    where
+      go :: FreeBif3 k a b -> FreeBif3 k b c -> FreeBif3 k a c
+      go Nil3        h = h
+      go (Cons3 f g) h = Cons3 f (go g h)
+
+instance Bif (FreeBif3 k) where
+  Nil3         *** Nil3         = Nil3
+  Cons3 f1 fs1 *** Cons3 f2 fs2 = Cons3 (BothSides3 f1 f2)  (fs1  *** fs2)
+  Nil3         *** Cons3 f2 fs2 = Cons3 (RightSide3    f2)  (Nil3 *** fs2)
+  Cons3 f1 fs1 *** Nil3         = Cons3 (LeftSide3  f1)     (fs1  *** Nil3)
+
 -- This is a pretty good attempt! It satisfies most of the laws:
 --
 -- > id >>> f = f = f >>> id
@@ -74,28 +116,20 @@ instance Bif (FreeBif2 k) where
 -- But it doesn't satisfy this one:
 --
 -- > (f *** id) >>> (id *** g) = f *** g = (id *** g) >>> (f *** id)
--- > Par2 f Id2 `Cons2` Par2 Id2 g `Cons2` Nil2 !=
--- > Par2 f g `Cons2` Nil2 !=
--- > Par2 Id2 g `Cons2` Par2 f Id2 `Cons2` Nil2
---
--- It also has too many reprentations for the same identity morphism:
---
--- > Par2 Id2 Id2 `Cons2` Par2 Id2 Id2 `Cons2` Nil2 !=
--- > Par2 Id2 Id2 `Cons2` Nil2 !=
--- > Nil2
+-- > LeftSide3 f `Cons3` RightSide3 g `Cons3` Nil3 !=
+-- > BothSides3 f g `Cons3` Nil3 !=
+-- > RightSide3 g `Cons3` LeftSide3 f `Cons3` Nil3
 --
 -- To solve the problem, let's try making the following values unrepresentable:
 --
--- > Par2 f Id2 `Cons2` Par2 Id2 g `Cons2` Nil2
--- > Par2 Id2 g `Cons2` Par2 f Id2 `Cons2` Nil2
--- > Par2 Id2 Id2 `Cons2` Par2 Id2 Id2 `Cons2` Nil2
--- > Par2 Id2 Id2 `Cons2` Nil2
+-- > LeftSide3 f `Cons3` RightSide3 g `Cons3` Nil3
+-- > RightSide3 g `Cons3` LeftSide3 f `Cons3` Nil3
 --
 -- Doing so will force the implementation of (***) to normalize its result,
 -- thus ensuring that
 --
--- > (Par2 f Id2 `Cons2` Nil2) *** (Id2 g `Cons2` Nil2) =
--- > Par2 f g `Cons2` Nil2
+-- > (LeftSide3 f `Cons3` Nil3) *** (RightSide3 g `Cons3` Nil3) =
+-- > BothSides3 f g `Cons3` Nil3
 
 
 -- The rest of this file is not as well documented, but hopefully the
