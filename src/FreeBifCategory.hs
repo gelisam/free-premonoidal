@@ -1,4 +1,4 @@
-{-# LANGUAGE ConstraintKinds, GADTs, DataKinds, PolyKinds, TypeFamilies, TypeOperators, UndecidableInstances #-}
+{-# LANGUAGE ConstraintKinds, GADTs, DataKinds, PolyKinds, TypeFamilies, TypeOperators, UndecidableInstances, ViewPatterns #-}
 module FreeBifCategory where
 
 import Prelude hiding (id, (.))
@@ -15,6 +15,7 @@ import Data.Kind (Type)
 --
 -- > id *** id = id
 -- > (f *** id) >>> (id *** g) = f *** g = (id *** g) >>> (f *** id)
+infixr 3 ***
 class Category k => Bif k where
   (***) :: k a1 b1 -> k a2 b2 -> k (a1, a2) (b1, b2)
 
@@ -42,6 +43,7 @@ instance Bif (BifAST k) where
 -- one or more of them acting in parallel on various parts of a nested pair.
 -- Here is what that attempt looks like (attemt #2, hence the "2" suffix):
 
+infixr 1 `Cons2`
 data FreeBif2 k a b where
   Nil2  :: FreeBif2 k a a
   Cons2 :: Layer2 k a b -> FreeBif2 k b c -> FreeBif2 k a c
@@ -83,14 +85,15 @@ instance Bif (FreeBif2 k) where
 --
 -- Here is a third attempt which uses that approach:
 
+infixr 1 `Cons3`
 data FreeBif3 k a b where
   Nil3  :: FreeBif3 k a a
   Cons3 :: Layer3 k a b -> FreeBif3 k b c -> FreeBif3 k a c
 
 data Layer3 k a b where
   Embed3     :: k a b -> Layer3 k a b
-  LeftSide3  :: Layer3 k a1 b1                   -> Layer3 k (a1, a2) (b1, b2)
-  RightSide3 ::                   Layer3 k a2 b2 -> Layer3 k (a1, a2) (b1, b2)
+  LeftSide3  :: Layer3 k a1 b1                   -> Layer3 k (a1, x)  (b1, x)
+  RightSide3 ::                   Layer3 k a2 b2 -> Layer3 k (x,  a2) (x,  b2)
   BothSides3 :: Layer3 k a1 b1 -> Layer3 k a2 b2 -> Layer3 k (a1, a2) (b1, b2)
 
 instance Category (FreeBif3 k) where
@@ -120,17 +123,58 @@ instance Bif (FreeBif3 k) where
 -- > BothSides3 f g `Cons3` Nil3 !=
 -- > RightSide3 g `Cons3` LeftSide3 f `Cons3` Nil3
 --
--- To solve the problem, let's try making the following values unrepresentable:
---
--- > LeftSide3 f `Cons3` RightSide3 g `Cons3` Nil3
--- > RightSide3 g `Cons3` LeftSide3 f `Cons3` Nil3
---
--- Doing so will force the implementation of (***) to normalize its result,
--- thus ensuring that
---
--- > (LeftSide3 f `Cons3` Nil3) *** (RightSide3 g `Cons3` Nil3) =
--- > BothSides3 f g `Cons3` Nil3
+-- To solve the problem, let's add a normalization step which compresses values
+-- like @LeftSide3 f `Cons3` RightSide3 g `Cons3` Nil3@
+-- and @RightSide3 g `Cons3` LeftSide3 f `Cons3` Nil3@
+-- into @BothSides3 f g `Cons3` Nil3@.
 
+infixr 1 `Cons4`
+data FreeBif4 k a b where
+  Nil4  :: FreeBif4 k a a
+  Cons4 :: Layer4 k a b -> FreeBif4 k b c -> FreeBif4 k a c
+
+data Layer4 k a b where
+  Embed4     :: k a b -> Layer4 k a b
+  LeftSide4  :: Layer4 k a1 b1                   -> Layer4 k (a1, x)  (b1, x)
+  RightSide4 ::                   Layer4 k a2 b2 -> Layer4 k (x,  a2) (x,  b2)
+  BothSides4 :: Layer4 k a1 b1 -> Layer4 k a2 b2 -> Layer4 k (a1, a2) (b1, b2)
+
+instance Category (FreeBif4 k) where
+  id = Nil4
+  (.) = flip go
+    where
+      go :: FreeBif4 k a b -> FreeBif4 k b c -> FreeBif4 k a c
+      go Nil4        h = h
+      go (Cons4 f g) h = cons4 f (go g h)
+
+instance Bif (FreeBif4 k) where
+  Nil4         *** Nil4         = Nil4
+  Cons4 f1 fs1 *** Cons4 f2 fs2 = cons4 (BothSides4 f1 f2)  (fs1  *** fs2)
+  Nil4         *** Cons4 f2 fs2 = cons4 (RightSide4    f2)  (Nil4 *** fs2)
+  Cons4 f1 fs1 *** Nil4         = cons4 (LeftSide4  f1)     (fs1  *** Nil4)
+
+cons4 :: Layer4 k a b -> FreeBif4 k b c -> FreeBif4 k a c
+cons4 f              Nil4                       = Cons4 f Nil4
+cons4 (LeftSide4  f) (Cons4 (RightSide4 g) fs)  = Cons4 (BothSides4 f g) fs
+cons4 (RightSide4 g) (Cons4 (LeftSide4 f) fs)   = Cons4 (BothSides4 f g) fs
+cons4 (LeftSide4  f) (Cons4 (LeftSide4 g) fs)   = case cons4 f (cons4 g Nil4) of
+  Cons4 fg Nil4 -> LeftSide4 fg `Cons4` fs
+  _             -> LeftSide4 f  `Cons4` LeftSide4 g `Cons4` fs
+cons4 (RightSide4  f) (Cons4 (RightSide4 g) fs) = case cons4 f (cons4 g Nil4) of
+  Cons4 fg Nil4 -> RightSide4 fg `Cons4` fs
+  _             -> RightSide4 f  `Cons4` RightSide4 g `Cons4` fs
+
+-- That should work... I think? I almost forgot to add the last two cases,
+-- which are required to normalize
+-- @LeftSide4 (LeftSide4 f) `cons4` LeftSide4 (RightSide4 g) `cons4` Nil4@
+-- to @LeftSide4 (BothSides4 f g) `Cons4` Nil4`.
+--
+-- Another problem is that even though the '(>>>)' and '(***)' normalize their
+-- output in order to satisfy the laws, non-normalized morphisms are still
+-- valid 'FreeBif4' values, so we again have too many morphisms. It's not
+-- enough to replace @LeftSide4 f `Cons4` RightSide4 g `Cons4` Nil4@ and
+-- @RightSide4 g `Cons4` LeftSide4 f `Cons4` Nil4@ with a normalized version,
+-- we must make those unrepresentable!
 
 -- The rest of this file is not as well documented, but hopefully the
 -- motivation is now clear.
