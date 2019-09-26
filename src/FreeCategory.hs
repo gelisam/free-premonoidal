@@ -8,7 +8,7 @@
 -- extra morphisms to @k@ in order to define a category with some amount of
 -- structure. In this file, we define a type constructor 'FreeCat' which adds
 -- identity morphisms and composition morphisms, making @FreeCat k@ a proper
--- category. Later, 'FreeMonoidalCat' will add more morphisms, making
+-- category. Later, 'FreeMonoidalCat' will add even more morphisms, making
 -- @FreeMonoidalCat k@ a monoidal category.
 module FreeCategory where
 

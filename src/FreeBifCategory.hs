@@ -5,6 +5,102 @@ import Prelude hiding (id, (.))
 import Control.Category
 import Data.Kind (Type)
 
+-- As a first step towards monoidal categories, let's define a typeclass for
+-- categories which have a tensor @(,)@, but no identity object @()@ nor
+-- morphisms witnessing the tensor's associativity @((a,b),c) <-> (a,(b,c))@,
+-- just the ability to apply two morphisms in parallel, on both side of the
+-- tensor.
+--
+-- laws:
+--
+-- > id *** id = id
+-- > (f *** id) >>> (id *** g) = f *** g = (id *** g) >>> (f *** id)
+class Category k => Bif k where
+  (***) :: k a1 b1 -> k a2 b2 -> k (a1, a2) (b1, b2)
+
+-- As usual, the incorrect way to do that is to define one constructor for each
+-- morphism we want to add. Note that we want to add _both_ the identity and
+-- composition morphisms from 'Category' _and_ the parallel morphisms from
+-- 'Bif'.
+
+data BifAST k a b where
+  EmbedAST   :: k a b -> BifAST k a b
+  IdAST      :: BifAST k a a
+  ComposeAST :: BifAST k a b -> BifAST k b c -> BifAST k a c
+  ParAST     :: BifAST k a1 b1 -> BifAST k a2 b2 -> BifAST k (a1, a2) (b1, b2)
+
+instance Category (BifAST k) where
+  id = IdAST
+  (.) = flip ComposeAST
+
+instance Bif (BifAST k) where
+  (***) = ParAST
+
+-- The problem with that first definition, as before, is that it does not
+-- satisfy the laws. My intuition is that I again need something like a list,
+-- except that each element of the list isn't a single generator morphism, it's
+-- one or more of them acting in parallel on various parts of a nested pair.
+-- Here is what that attempt looks like (attemt #2, hence the "2" suffix):
+
+data FreeBif2 k a b where
+  Nil2  :: FreeBif2 k a a
+  Cons2 :: Layer2 k a b -> FreeBif2 k b c -> FreeBif2 k a c
+
+data Layer2 k a b where
+  Id2    :: Layer2 k a a
+  Embed2 :: k a b -> Layer2 k a b
+  Par2   :: Layer2 k a1 b1 -> Layer2 k a2 b2 -> Layer2 k (a1, a2) (b1, b2)
+
+instance Category (FreeBif2 k) where
+  id = Nil2
+  (.) = flip go
+    where
+      go :: FreeBif2 k a b -> FreeBif2 k b c -> FreeBif2 k a c
+      go Nil2        h = h
+      go (Cons2 f g) h = Cons2 f (go g h)
+
+instance Bif (FreeBif2 k) where
+  Nil2         *** Nil2         = Nil2
+  Cons2 f1 fs1 *** Cons2 f2 fs2 = Cons2 (Par2 f1  f2)  (fs1  *** fs2)
+  Nil2         *** Cons2 f2 fs2 = Cons2 (Par2 Id2 f2)  (Nil2 *** fs2)
+  Cons2 f1 fs1 *** Nil2         = Cons2 (Par2 f1  Id2) (fs1  *** Nil2)
+
+-- This is a pretty good attempt! It satisfies most of the laws:
+--
+-- > id >>> f = f = f >>> id
+-- > (f >>> g) >>> h = f >>> (g >>> h)
+-- > id *** id = id
+--
+-- But it doesn't satisfy this one:
+--
+-- > (f *** id) >>> (id *** g) = f *** g = (id *** g) >>> (f *** id)
+-- > Par2 f Id2 `Cons2` Par2 Id2 g `Cons2` Nil2 !=
+-- > Par2 f g `Cons2` Nil2 !=
+-- > Par2 Id2 g `Cons2` Par2 f Id2 `Cons2` Nil2
+--
+-- It also has too many reprentations for the same identity morphism:
+--
+-- > Par2 Id2 Id2 `Cons2` Par2 Id2 Id2 `Cons2` Nil2 !=
+-- > Par2 Id2 Id2 `Cons2` Nil2 !=
+-- > Nil2
+--
+-- To solve the problem, let's try making the following values unrepresentable:
+--
+-- > Par2 f Id2 `Cons2` Par2 Id2 g `Cons2` Nil2
+-- > Par2 Id2 g `Cons2` Par2 f Id2 `Cons2` Nil2
+-- > Par2 Id2 Id2 `Cons2` Par2 Id2 Id2 `Cons2` Nil2
+-- > Par2 Id2 Id2 `Cons2` Nil2
+--
+-- Doing so will force the implementation of (***) to normalize its result,
+-- thus ensuring that
+--
+-- > (Par2 f Id2 `Cons2` Nil2) *** (Id2 g `Cons2` Nil2) =
+-- > Par2 f g `Cons2` Nil2
+
+
+-- The rest of this file is not as well documented, but hopefully the
+-- motivation is now clear.
+
 
 data Parent a
   = L  a  -- ^ left  child of parent
@@ -134,15 +230,15 @@ type family HasSuperfluousSplits (pas :: [Parent k])
 --                 => SplitTree a ta
 --                 -> SplitTree b tb
 --                 -> BifTransition a b
--- 
+--
 -- type FreeBif k = MList BifTransition (MEmbed k)
--- 
+--
 -- instance Category BifTransition where
 --   id = BifTransition NoSplit NoSplit
 --   BifTransition sb' sc . BifTransition sa sb =
 --     BifTransition sa sc
--- 
--- 
+--
+--
 -- twoMorphisms :: k (a1,a2) (b1,b2) -> k (b1,b2) (c1,c2) -> FreeBif k (a1,a2) (c1,c2)
 -- twoMorphisms f g = MCons (BifTransition NoSplit NoSplit) (MWhole f)
 --                  $ MCons (BifTransition NoSplit NoSplit) (MWhole g)
