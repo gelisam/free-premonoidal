@@ -2,8 +2,37 @@
 module Main where
 import Test.DocTest
 
+import Control.Category
 import Data.Kind (Type)
 import Data.Proxy
+
+
+-- premonoidal category
+class Category k => Premonoidal k where
+  first  :: k a b
+         -> k (a, x) (b, x)
+  second :: k a b
+         -> k (x, a) (x, b)
+  introL :: k a ((), a)
+  introR :: k a (a, ())
+  elimL  :: k ((), a) a
+  elimR  :: k (a, ()) a
+  assocL :: k (a, (b, c))
+              ((a, b), c)
+  assocR :: k ((a, b), c)
+              (a, (b, c))
+
+-- symmetric premonoidal category
+class Premonoidal k => Symmetric k where
+  swap :: k (a, b) (b, a)
+
+-- semicartesian premonoidal category
+class Symmetric k => Semicartesian k where
+  forget :: k a ()
+
+-- cartesian premonoidal category
+class Semicartesian k => Cartesian k where
+  dup :: k a (a, a)
 
 
 type family (++) (as :: [Type])
