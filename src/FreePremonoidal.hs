@@ -1,6 +1,8 @@
-{-# LANGUAGE GADTs, KindSignatures, TypeFamilies, TypeInType, TypeOperators #-}
+{-# LANGUAGE GADTs, KindSignatures, LambdaCase, RankNTypes, TypeFamilies, TypeInType, TypeOperators #-}
 module Main where
 import Test.DocTest
+
+import Prelude hiding (id, (.))
 
 import Control.Category
 import Data.Kind (Type)
@@ -206,6 +208,25 @@ data FreeCartesian (k :: Type -> Type -> Type)
     -> Actions (ReuseAction (ListAction k)) as bs
     -> FromSuperset bs b
     -> FreeCartesian k a b
+
+
+instance Category (FreeCategory k) where
+  id = NilC
+  (.) = flip go where
+    go :: FreeCategory k a b
+       -> FreeCategory k b c
+       -> FreeCategory k a c
+    go NilC         gs = gs
+    go (ConsC f fs) gs = ConsC f (go fs gs)
+
+runFreeCategory :: Category r
+                => (forall x y. k x y -> r x y)
+                -> FreeCategory k a b -> r a b
+runFreeCategory runK = \case
+  NilC       -> id
+  ConsC f fs -> runK f
+            >>> runFreeCategory runK fs
+
 
 
 main :: IO ()
