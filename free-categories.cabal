@@ -18,6 +18,7 @@ library
                      -- , FreeSemigroupoid
   exposed-modules:     FreeCategory
                      , FreeBifCategory
+                     , FreePremonoidal
                      -- , FreeSemigroupidalCategory
                      -- , FreeMonoidalCategory
                      -- , FreeLinearCategory

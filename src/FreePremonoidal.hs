@@ -1,6 +1,5 @@
 {-# LANGUAGE GADTs, KindSignatures, LambdaCase, RankNTypes, TypeFamilies, TypeInType, TypeOperators #-}
-module Main where
-import Test.DocTest
+module FreePremonoidal where
 
 import Prelude hiding (id, (.))
 
@@ -228,6 +227,3 @@ runFreeCategory runK = \case
             >>> runFreeCategory runK fs
 
 
-
-main :: IO ()
-main = doctest ["src/Main.hs"]
