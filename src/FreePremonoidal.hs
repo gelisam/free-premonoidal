@@ -81,6 +81,7 @@ instance Monad m => Cartesian (K.Kleisli m) where
 data ToList (a :: Type)
             (as :: [Type])
             where
+  Unit :: ToList () '[]
   Atom :: ToList a (a ': '[])
   Pair :: ToList a as
        -> ToList b bs
