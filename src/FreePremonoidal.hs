@@ -7,6 +7,7 @@ import qualified Control.Arrow as K
 import Control.Category
 import Data.Kind (Type)
 import Data.Proxy
+import TypeLevel.Append
 
 
 -- premonoidal category
@@ -75,13 +76,6 @@ instance Monad m => Semicartesian (K.Kleisli m) where
 
 instance Monad m => Cartesian (K.Kleisli m) where
   dup = K.arr dup
-
-
-type family (++) (as :: [Type])
-                 (bs :: [Type])
-                 where
-  '[]       ++ bs = bs
-  (a ': as) ++ bs = a ': (as ++ bs)
 
 
 data ToList (a :: Type)
