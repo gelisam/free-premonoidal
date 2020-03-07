@@ -204,6 +204,7 @@ data Actions (action :: [Type] -> [Type] -> Type)
         -> Actions action bs cs
         -> Actions action as cs
 
+
 -- Free premonoidal category
 data FreePremonoidal (k :: Type -> Type -> Type)
                      (a :: Type)
@@ -218,9 +219,9 @@ data FreePremonoidal (k :: Type -> Type -> Type)
 
 -- Free symmetric premonoidal category
 data FreeSymmetric (k :: Type -> Type -> Type)
-          (a :: Type)
-          (b :: Type)
-          where
+                   (a :: Type)
+                   (b :: Type)
+                   where
   FreeSymmetric
     :: ToList a as
     -> Actions (GrabAction (ListAction k)) as bs
@@ -259,9 +260,10 @@ instance Category (FreeCategory k) where
     go NilC         gs = gs
     go (ConsC f fs) gs = ConsC f (go fs gs)
 
-runFreeCategory :: Category r
-                => (forall x y. k x y -> r x y)
-                -> FreeCategory k a b -> r a b
+runFreeCategory
+  :: Category r
+  => (forall x y. k x y -> r x y)
+  -> FreeCategory k a b -> r a b
 runFreeCategory runK = \case
   NilC       -> id
   ConsC f fs -> runK f
