@@ -1,4 +1,7 @@
-{-# LANGUAGE GADTs, KindSignatures, LambdaCase, RankNTypes, TypeFamilies, TypeInType, TypeOperators #-}
+{-# LANGUAGE GADTs, KindSignatures, LambdaCase, RankNTypes, TupleSections, TypeFamilies, TypeInType, TypeOperators #-}
+{-# OPTIONS_GHC -fplugin TypeLevel.Rewrite
+                -fplugin-opt=TypeLevel.Rewrite:TypeLevel.Append.RightIdentity
+                -fplugin-opt=TypeLevel.Rewrite:TypeLevel.Append.RightAssociative #-}
 module FreePremonoidal where
 
 import Prelude hiding (id, (.))
@@ -265,3 +268,38 @@ runFreeCategory runK = \case
             >>> runFreeCategory runK fs
 
 
+data HList as where
+  HNil  :: HList '[]
+  HCons :: a -> HList as -> HList (a ': as)
+
+happend :: HList as -> HList bs -> HList (as ++ bs)
+happend HNil         ys = ys
+happend (HCons x xs) ys = HCons x (happend xs ys)
+
+
+runToList
+  :: ToList a as
+  -> a -> HList as
+runToList = \case
+  Unit -> \() -> HNil
+  Atom -> \a -> HCons a HNil
+  Pair l r -> \(a, b)
+           -> happend (runToList l a)
+                      (runToList r b)
+
+runFromList
+  :: FromList bs b
+  -> HList (bs ++ rest) -> (b, HList rest)
+runFromList = \case
+  Unit -> \rest -> ((), rest)
+  Atom -> \(HCons b rest) -> (b, rest)
+  Pair l r -> go l r
+  where
+    go :: forall as bs a b rest
+        . FromList as a
+       -> FromList bs b
+       -> HList ((as ++ bs) ++ rest)
+       -> ((a, b), HList rest)
+    go l r asBsRest = let (a, bsRest) = runFromList l asBsRest
+                          (b, rest)   = runFromList r bsRest
+                      in ((a, b), rest)
