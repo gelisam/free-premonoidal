@@ -25,8 +25,25 @@ tappend = \case
                 elimL
                 -- bs
   LCons lenA -> \lenB
-             -> -- ((a, as), bs)
+             -> -- (a, as), bs)
                 assocR
                 -- (a, (as, bs))
             >>> second (tappend lenA lenB)
-                -- (a, (as ++ bs))
+                -- (a, as ++ bs)
+
+tsplit
+  :: Premonoidal r
+  => Length as
+  -> Length bs
+  -> r (Tuple (as ++ bs))
+       (Tuple as, Tuple bs)
+tsplit = \case
+  LNil -> \_ -> -- bs
+                introL
+                -- ([], bs)
+  LCons lenA -> \lenB
+             -> -- (a, as ++ bs)
+                second (tsplit lenA lenB)
+                -- (a, (as, bs))
+            >>> assocL
+                -- ((a, as), bs)
