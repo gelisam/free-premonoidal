@@ -15,15 +15,11 @@ extra-source-files:  README.md
 cabal-version:       >=1.10
 
 library
-                     -- , FreeSemigroupoid
   exposed-modules:     FreeCategory
                      , FreeBifCategory
+
+                     , Premonoidal
                      , FreePremonoidal
-                     -- , FreeSemigroupidalCategory
-                     -- , FreeMonoidalCategory
-                     -- , FreeLinearCategory
-                     -- , FreeAfineCategory
-                     -- , FreeCartesianCategory
 
   -- other-modules:       
   build-depends:       base
