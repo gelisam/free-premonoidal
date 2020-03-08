@@ -17,33 +17,43 @@ type family Tuple as where
 tappend
   :: Premonoidal r
   => Length as
-  -> Length bs
+  -> proxy bs
   -> r (Tuple as, Tuple bs)
        (Tuple (as ++ bs))
 tappend = \case
-  LNil -> \_ -> -- ([], bs)
-                elimL
-                -- bs
-  LCons lenA -> \lenB
+  LNil -> \_
+       -> -- ([], bs)
+          elimL
+          -- bs
+  LCons lenA -> \proxyB
              -> -- (a, as), bs)
                 assocR
                 -- (a, (as, bs))
-            >>> second (tappend lenA lenB)
+            >>> second (tappend lenA proxyB)
                 -- (a, as ++ bs)
 
 tsplit
   :: Premonoidal r
   => Length as
-  -> Length bs
+  -> proxy bs
   -> r (Tuple (as ++ bs))
        (Tuple as, Tuple bs)
 tsplit = \case
-  LNil -> \_ -> -- bs
-                introL
-                -- ([], bs)
-  LCons lenA -> \lenB
+  LNil -> \_
+       -> -- bs
+          introL
+          -- ([], bs)
+  LCons lenA -> \proxyB
              -> -- (a, as ++ bs)
-                second (tsplit lenA lenB)
+                second (tsplit lenA proxyB)
                 -- (a, (as, bs))
             >>> assocL
                 -- ((a, as), bs)
+
+
+newtype TArrow r as bs = TArrow
+  { runTArrow :: r (Tuple as) (Tuple bs) }
+
+instance Category r => Category (TArrow r) where
+  id = TArrow id
+  TArrow f . TArrow g = TArrow (f . g)

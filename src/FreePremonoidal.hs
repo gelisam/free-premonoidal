@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs, KindSignatures, LambdaCase, RankNTypes, ScopedTypeVariables, TupleSections, TypeApplications, TypeFamilies, TypeInType, TypeOperators #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -fplugin TypeLevel.Rewrite
                 -fplugin-opt=TypeLevel.Rewrite:TypeLevel.Append.RightIdentity
                 -fplugin-opt=TypeLevel.Rewrite:TypeLevel.Append.RightAssociative #-}
@@ -11,6 +12,10 @@ import Data.Kind (Type)
 import Data.Proxy
 import TypeLevel.Append
 
+import KnownLength
+import Premonoidal
+import Tuple
+
 
 data ToList (a :: Type)
             (as :: [Type])
@@ -21,9 +26,9 @@ data ToList (a :: Type)
        -> ToList b bs
        -> ToList (a, b) (as ++ bs)
 
-type FromList (bs :: [Type])
-              (b :: Type)
-  = ToList b bs
+type FromList (as :: [Type])
+              (a :: Type)
+  = ToList a as
 
 data FromSet (as :: [Type])
              (a :: Type)
@@ -181,157 +186,333 @@ instance Category (FreeCategory k) where
     go (f :>>> fs) gs = f :>>> go fs gs
 
 
-data HList as where
-  HNil  :: HList '[]
-  HCons :: a -> HList as -> HList (a ': as)
-
-happend :: HList as -> HList bs -> HList (as ++ bs)
-happend HNil         ys = ys
-happend (HCons x xs) ys = HCons x (happend xs ys)
-
-
-newtype HArrow as bs = HArrow
-  { runHArrow :: HList as -> HList bs }
-
-instance Category HArrow where
-  id = HArrow id
-  HArrow f . HArrow g = HArrow (f . g)
-
-
-runToList
-  :: ToList a as
-  -> a -> HList as
-runToList = \case
-  Unit -> \() -> HNil
-  Atom -> \a -> HCons a HNil
-  Pair l r -> \(a, b)
-           -> happend (runToList l a)
-                      (runToList r b)
-
-runFromList
-  :: FromList bs b
-  -> HList bs -> b
-runFromList fromList = fst . go1 (Proxy @'[]) fromList
+runToListAndLengh
+  :: Premonoidal r
+  => ToList a as
+  -> ( r a (Tuple as)
+     , Length as
+     )
+runToListAndLengh = go1
   where
     go1
-      :: Proxy rest
-      -> FromList bs b
-      -> HList (bs ++ rest) -> (b, HList rest)
-    go1 Proxy = \case
-      Unit -> \rest -> ((), rest)
-      Atom -> \(HCons b rest)
-           -> (b, rest)
-      Pair l r -> go2 l r
+      :: Premonoidal r
+      => ToList a as
+      -> ( r a (Tuple as)
+         , Length as
+         )
+    go1 = \case
+      Unit -> let r = -- ()
+                      id
+                      -- []
+              in (r, LNil)
+      Atom -> let r = -- a
+                      introR
+                      -- (a, [])
+              in (r, LCons LNil)
+      Pair toListL toListR -> go2 toListL toListR
 
-    go2 :: forall as bs a b rest
-         . FromList as a
-        -> FromList bs b
-        -> HList ((as ++ bs) ++ rest)
-        -> ((a, b), HList rest)
-    go2 l r asBsRest
-      = let (a, bsRest) = go1 (Proxy @(bs ++ rest))
-                              l asBsRest
-            (b, rest)   = go1 (Proxy @_)
-                              r bsRest
-        in ((a, b), rest)
+    go2
+      :: Premonoidal r
+      => ToList a as
+      -> ToList b bs
+      -> ( r (a, b)
+             (Tuple (as ++ bs))
+         , Length (as ++ bs)
+         )
+    go2 toListL toListR
+      = let (rL, lenL) = go1 toListL
+            (rR, lenR) = go1 toListR
+            r          = -- (a, b)
+                         first rL
+                         -- (as, b)
+                     >>> second rR
+                         -- (as, bs)
+                     >>> tappend lenL lenR
+                         -- as ++ bs
+        in (r, lappend lenL lenR)
+
+runToList
+  :: Premonoidal r
+  => ToList a as
+  -> r a (Tuple as)
+runToList = fst . runToListAndLengh
+
+runFromList
+  :: Premonoidal r
+  => FromList as a
+  -> r (Tuple as) a
+runFromList = fst . go1
+  where
+    go1
+      :: Premonoidal r
+      => FromList as a
+      -> ( r (Tuple as) a
+         , Length as
+         )
+    go1 = \case
+      Unit -> let r = -- []
+                      id
+                      -- ()
+              in (r, LNil)
+      Atom -> let r = -- (a, [])
+                      elimR
+                      -- a
+              in (r, LCons LNil)
+      Pair fromListL fromListR -> go2 fromListL fromListR
+
+    go2
+      :: Premonoidal r
+      => FromList as a
+      -> FromList bs b
+      -> ( r (Tuple (as ++ bs))
+             (a, b)
+         , Length (as ++ bs)
+         )
+    go2 fromListL fromListR
+      = let (rL, lenL) = go1 fromListL
+            (rR, lenR) = go1 fromListR
+            r          = -- as ++ bs
+                         tsplit lenL lenR
+                         -- (as, bs)
+                     >>> first rL
+                         -- (a, bs)
+                     >>> second rR
+                         -- (a, b)
+        in (r, lappend lenL lenR)
 
 runFromSet
-  :: FromSet as a
-  -> HList as -> a
-runFromSet (FromSet cN fromList) as
-  = let (xs, _) = runConsumeN cN as
-        a       = runFromList fromList xs
-    in a
+  :: Symmetric r
+  => FromSet as a
+  -> r (Tuple as) a
+runFromSet (FromSet cN fromList)
+    = -- as
+      runConsumeN cN
+      -- (xs, [])
+  >>> elimR
+      -- xs
+  >>> runFromList fromList
+      -- a
 
 runFromSuperset
-  :: FromSuperset as a
-  -> HList as -> a
-runFromSuperset (FromSuperset cN fromList) as
-  = let (xs, _) = runConsumeN cN as
-        a       = runFromList fromList xs
-    in a
+  :: Semicartesian r
+  => FromSuperset as a
+  -> r (Tuple as) a
+runFromSuperset (FromSuperset cN fromList)
+    = -- as
+      runConsumeN cN
+      -- (xs, bs)
+  >>> second forget
+      -- (xs, ()
+  >>> elimR
+      -- xs
+  >>> runFromList fromList
+      -- a
 
 runConsume1
-  :: Consume1 as x bs
-  -> HList as -> (x, HList bs)
+  :: Symmetric r
+  => Consume1 as x bs
+  -> r (Tuple as)
+       (x, Tuple bs)
 runConsume1 = \case
-  CHere -> \(HCons x as) -> (x, as)
-  CThere c1 -> \(HCons y as)
-            -> let (x, bs) = runConsume1 c1 as
-               in (x, HCons y bs)
+  CHere -> -- (x, as)
+           id
+           -- (x, as)
+  CThere c1 -> -- (y, as)
+               second (runConsume1 c1)
+               -- (y, (x, bs))
+           >>> assocL
+               -- ((y, x), bs)
+           >>> first swap
+               -- ((x, y), bs)
+           >>> assocR
+               -- (x, (y, bs))
 
 runConsumeN
-  :: ConsumeN as xs bs
-  -> HList as -> (HList xs, HList bs)
+  :: Symmetric r
+  => ConsumeN as xs bs
+  -> r (Tuple as)
+       (Tuple xs, Tuple bs)
 runConsumeN = \case
-  CNil -> \as -> (HNil, as)
-  CCons c1 cN -> \as
-              -> let (x, bs)  = runConsume1 c1 as
-                     (xs, cs) = runConsumeN cN bs
-                 in (HCons x xs, cs)
+  CNil -> -- as
+          introL
+          -- ([], as)
+  CCons c1 cN -> -- as
+                 runConsume1 c1
+                 -- (x, bs)
+             >>> second (runConsumeN cN)
+                 -- (x, (xs, cs))
+             >>> assocL
+                 -- ((x, xs), cs)
 
 runObserve1
-  :: Observe1 as x
-  -> HList as -> x
+  :: Semicartesian r
+  => Observe1 as x
+  -> r (Tuple as) x
 runObserve1 = \case
-  OHere -> \(HCons x _) -> x
-  OThere o1 -> \(HCons _ as) -> runObserve1 o1 as
+  OHere -> -- (x, as)
+           second forget
+           -- (x, ())
+       >>> elimR
+           -- x
+  OThere o1 -> -- (y, as)
+               second (runObserve1 o1)
+               -- (y, x)
+           >>> first forget
+               -- ((), x)
+           >>> elimL
 
 runObserveN
-  :: ObserveN as xs
-  -> HArrow as xs
+  :: Cartesian r
+  => ObserveN as xs
+  -> r (Tuple as) (Tuple xs)
 runObserveN = \case
-  ONil -> HArrow $ \_ -> HNil
-  OCons o1 oN -> HArrow $ \as
-              -> HCons (runObserve1 o1 as)
-                       (runHArrow (runObserveN oN) as)
+  ONil -> -- as
+          forget
+          -- []
+  OCons o1 oN -> -- as
+                 dup
+                 -- (as, as)
+             >>> first (runObserve1 o1)
+                 -- (x, as)
+             >>> second (runObserveN oN)
+                 -- (x, xs)
 
 runListAction
-  :: (forall x y. k x y -> x -> y)
+  :: Premonoidal r
+  => (forall x y. k x y -> r x y)
   -> ListAction k as bs
-  -> HArrow as bs
+  -> ( r (Tuple as) (Tuple bs)
+     , Length bs
+     )
 runListAction runK (ListAction fromList k toList)
-    = HArrow
-    $ runFromList fromList
-  >>> runK k
-  >>> runToList toList
+  = let (rBs, lenBs) = runToListAndLengh toList
+        r            = -- as
+                       runFromList fromList
+                       -- a
+                   >>> runK k
+                       -- b
+                   >>> rBs
+                       -- bs
+    in (r, lenBs)
 
 runSplit
-   :: Split prePost pre post
-   -> HList prePost -> (HList pre, HList post)
+   :: Premonoidal r
+   => Split prePost pre post
+   -> ( r (Tuple prePost)
+          (Tuple pre, Tuple post)
+      , Length pre
+      )
 runSplit = \case
-  SHere -> \as -> (HNil, as)
-  SThere s -> \(HCons a prePost)
-           -> let (pre, post) = runSplit s prePost
-              in (HCons a pre, post)
+  SHere -> let r = -- post
+                   introL
+                   -- ([], post)
+           in (r, LNil)
+  SThere s -> let (rS, lenS) = runSplit s
+                  r          = -- (a, pre ++ post)
+                               second rS
+                               -- (a, (pre, post))
+                           >>> assocL
+                               -- ((a, pre), post)
+              in (r, LCons lenS)
 
 runFocused
-  :: (forall xs ys. action xs ys -> HArrow xs ys)
+  :: Premonoidal r
+  => (forall xs ys. action xs ys -> ( r (Tuple xs) (Tuple ys)
+                                    , Length ys
+                                    ))
   -> Focused action as bs
-  -> HArrow as bs
-runFocused runAction (Focused s1 s2 action) = HArrow $ \preAsPost
- -> let (pre, asPost) = runSplit s1 preAsPost
-        (as, post)    = runSplit s2 asPost
-        bs            = runHArrow (runAction action) as
-    in pre `happend` bs `happend` post
+  -> TArrow r as bs
+runFocused runAction (Focused s1 s2 action)
+  = TArrow $ go runAction s1 s2 action
+  where
+    go
+      :: forall r action pre as bs post. Premonoidal r
+      => (forall xs ys. action xs ys -> ( r (Tuple xs) (Tuple ys)
+                                        , Length ys
+                                        ))
+      -> Split (pre ++ as ++ post) pre (as ++ post)
+      -> Split (as ++ post) as post
+      -> action as bs
+      -> r (Tuple (pre ++ as ++ post))
+           (Tuple (pre ++ bs ++ post))
+    go runAction s1 s2 action
+      = let (r1, lenPre) = runSplit s1
+            (r2, _lenAs) = runSplit s2
+            (rA, lenBs)  = runAction action
+            r            = -- pre ++ as ++ post
+                           r1
+                           -- (pre, as ++ post)
+                       >>> second r2
+                           -- (pre, (as, post))
+                       >>> second (first rA)
+                           -- (pre, (bs, post))
+                       >>> second (tappend lenBs (Proxy @post))
+                           -- (pre, bs ++ post)
+                       >>> tappend lenPre (Proxy @(bs ++ post))
+                           -- pre ++ bs ++ post
+         in r
 
 runConsuming
-  :: (forall xs ys. action xs ys -> HArrow xs ys)
+  :: Symmetric r
+  => (forall xs ys. action xs ys -> ( r (Tuple xs) (Tuple ys)
+                                    , Length ys
+                                    ))
   -> Consuming action as bs
-  -> HArrow as bs
-runConsuming runAction (Consuming cN action) = HArrow $ \as
-  -> let (xs, rest) = runConsumeN cN as
-         ys         = runHArrow (runAction action) xs
-     in ys `happend` rest
+  -> TArrow r as bs
+runConsuming runAction (Consuming cN action)
+  = TArrow $ go runAction cN action
+  where
+    go
+      :: forall r action as xs ys rest. Symmetric r
+      => (forall xs ys. action xs ys -> ( r (Tuple xs) (Tuple ys)
+                                        , Length ys
+                                        ))
+      -> ConsumeN as xs rest
+      -> action xs ys
+      -> r (Tuple as)
+           (Tuple (ys ++ rest))
+    go runAction cN action
+      = let (rA, lenYs) = runAction action
+            r           = -- as
+                          runConsumeN cN
+                          -- (xs, rest)
+                      >>> first rA
+                          -- (ys, rest)
+                      >>> tappend lenYs (Proxy @rest)
+                          -- ys ++ rest
+        in r
 
 runObserving
-  :: (forall xs ys. action xs ys -> HArrow xs ys)
+  :: Cartesian r
+  => (forall xs ys. action xs ys -> ( r (Tuple xs) (Tuple ys)
+                                    , Length ys
+                                    ))
   -> Observing action as bs
-  -> HArrow as bs
-runObserving runAction (Observing cN action) = HArrow $ \as
-  -> let xs = runHArrow (runObserveN cN) as
-         ys = runHArrow (runAction action) xs
-     in ys `happend` as
+  -> TArrow r as bs
+runObserving runAction (Observing oN action)
+  = TArrow $ go runAction oN action
+  where
+    go
+      :: forall r action as xs ys. Cartesian r
+      => (forall xs ys. action xs ys -> ( r (Tuple xs) (Tuple ys)
+                                        , Length ys
+                                        ))
+      -> ObserveN as xs
+      -> action xs ys
+      -> r (Tuple as)
+           (Tuple (ys ++ as))
+    go runAction oN action
+      = let (rA, lenYs) = runAction action
+            r           = -- as
+                          dup
+                          -- (as, as)
+                      >>> first (runObserveN oN)
+                          -- (xs, as)
+                      >>> first rA
+                          -- (ys, as)
+                      >>> tappend lenYs (Proxy @as)
+                          -- ys ++ as
+        in r
 
 
 runFreeCategory
@@ -344,41 +525,79 @@ runFreeCategory runK = \case
            >>> runFreeCategory runK fs
 
 runFreePremonoidal
-  :: (forall x y. k x y -> x -> y)
-  -> FreePremonoidal k a b
-  -> a -> b
-runFreePremonoidal runK (FreePremonoidal toList focusedActions fromList)
-    = runToList toList
-  >>> runHArrow (runFreeCategory (runFocused $ runListAction $ runK)
-                                 focusedActions)
+  :: forall r k a b. Premonoidal r
+  => (forall x y. k x y -> r x y)
+  -> FreePremonoidal k a b -> r a b
+runFreePremonoidal runK (FreePremonoidal toList
+                                         focusedActions
+                                         fromList)
+    = -- a
+      runToList toList
+      -- as
+  >>> runTArrow (runFreeCategory runAction focusedActions)
+      -- bs
   >>> runFromList fromList
+      -- b
+  where
+    runAction
+      :: Focused (ListAction k) xs ys
+      -> TArrow r xs ys
+    runAction = runFocused (runListAction runK)
 
 runFreeSymmetric
-  :: (forall x y. k x y -> x -> y)
-  -> FreeSymmetric k a b
-  -> a -> b
-runFreeSymmetric runK (FreeSymmetric toList consumingActions fromSet)
-    = runToList toList
-  >>> runHArrow (runFreeCategory (runConsuming $ runListAction $ runK)
-                                 consumingActions)
+  :: forall r k a b. Symmetric r
+  => (forall x y. k x y -> r x y)
+  -> FreeSymmetric k a b -> r a b
+runFreeSymmetric runK (FreeSymmetric toList
+                                     consumingActions
+                                     fromSet)
+    = -- a
+      runToList toList
+      -- as
+  >>> runTArrow (runFreeCategory runAction consumingActions)
+      -- bs
   >>> runFromSet fromSet
+      -- b
+  where
+    runAction
+      :: Consuming (ListAction k) xs ys
+      -> TArrow r xs ys
+    runAction = runConsuming (runListAction runK)
 
 runFreeSemicartesian
-  :: (forall x y. k x y -> x -> y)
-  -> FreeSemicartesian k a b
-  -> a -> b
-runFreeSemicartesian runK (FreeSemicartesian toList observingActions fromSuperset)
-    = runToList toList
-  >>> runHArrow (runFreeCategory (runConsuming $ runListAction $ runK)
-                                 observingActions)
+  :: forall r k a b. Semicartesian r
+  => (forall x y. k x y -> r x y)
+  -> FreeSemicartesian k a b -> r a b
+runFreeSemicartesian runK (FreeSemicartesian toList
+                                             consumingActions
+                                             fromSuperset)
+    = -- a
+      runToList toList
+      -- as
+  >>> runTArrow (runFreeCategory runAction consumingActions)
+      -- bs
   >>> runFromSuperset fromSuperset
+      -- b
+  where
+    runAction
+      :: Consuming (ListAction k) xs ys
+      -> TArrow r xs ys
+    runAction = runConsuming (runListAction runK)
 
 runFreeCartesian
-  :: (forall x y. k x y -> x -> y)
-  -> FreeCartesian k a b
-  -> a -> b
-runFreeCartesian runK (FreeCartesian toList observingActions fromSuperset)
-    = runToList toList
-  >>> runHArrow (runFreeCategory (runObserving $ runListAction $ runK)
-                                 observingActions)
+  :: forall r k a b. Cartesian r
+  => (forall x y. k x y -> r x y)
+  -> FreeCartesian k a b -> r a b
+runFreeCartesian runK (FreeCartesian toList
+                                     observingActions
+                                     fromSuperset)
+    = -- a
+      runToList toList
+      -- as
+  >>> runTArrow (runFreeCategory runAction observingActions)
   >>> runFromSuperset fromSuperset
+  where
+    runAction
+      :: Observing (ListAction k) xs ys
+      -> TArrow r xs ys
+    runAction = runObserving (runListAction runK)
