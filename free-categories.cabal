@@ -15,14 +15,12 @@ extra-source-files:  README.md
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     FreeCategory
-                     , FreeBifCategory
-
-                     , Premonoidal
+  exposed-modules:     Premonoidal
                      , FreePremonoidal
 
   -- other-modules:       
   build-depends:       base
                      , typelevel-rewrite-rules
   hs-source-dirs:      src
+  ghc-options: -W -Wall
   default-language:    Haskell2010

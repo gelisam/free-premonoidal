@@ -6,13 +6,10 @@ module FreePremonoidal where
 
 import Prelude hiding (id, (.))
 
-import qualified Control.Arrow as K
 import Control.Category
 import Data.Kind (Type)
 import Data.Proxy
 import TypeLevel.Append
-
-import Premonoidal
 
 
 data ToList (a :: Type)
@@ -284,7 +281,7 @@ runObserveN
   :: ObserveN as xs
   -> HArrow as xs
 runObserveN = \case
-  ONil -> HArrow $ \as -> HNil
+  ONil -> HArrow $ \_ -> HNil
   OCons o1 oN -> HArrow $ \as
               -> HCons (runObserve1 o1 as)
                        (runHArrow (runObserveN oN) as)

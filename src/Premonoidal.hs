@@ -4,9 +4,6 @@ import Prelude hiding (id, (.))
 
 import qualified Control.Arrow as K
 import Control.Category
-import Data.Kind (Type)
-import Data.Proxy
-import TypeLevel.Append
 
 
 -- premonoidal category
@@ -51,7 +48,7 @@ instance Symmetric (->) where
   swap (a, b) = (b, a)
 
 instance Semicartesian (->) where
-  forget a = ()
+  forget _ = ()
 
 instance Cartesian (->) where
   dup a = (a, a)
