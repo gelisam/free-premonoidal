@@ -15,10 +15,14 @@ extra-source-files:  README.md
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     KnownLength
-                     , Tuple
-                     , Premonoidal
+  exposed-modules:     Consume
+                     , Divide
                      , FreePremonoidal
+                     , KnownLength
+                     , List
+                     , Observe
+                     , Premonoidal
+                     , Tuple
 
   -- other-modules:       
   build-depends:       base
