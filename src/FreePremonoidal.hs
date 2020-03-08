@@ -30,7 +30,7 @@ data FreePremonoidal (k :: Type -> Type -> Type)
                      where
   FreePremonoidal
     :: ToList a as
-    -> FreeCategory (Focused (ListAction k)) as bs
+    -> FreeCategory (Dividing (ListAction k)) as bs
     -> FromList bs b
     -> FreePremonoidal k a b
 
@@ -92,20 +92,20 @@ runFreePremonoidal
   => (forall x y. k x y -> r x y)
   -> FreePremonoidal k a b -> r a b
 runFreePremonoidal runK (FreePremonoidal toList
-                                         focusedActions
+                                         dividingActions
                                          fromList)
     = -- a
       runToList toList
       -- as
-  >>> runTArrow (runFreeCategory runAction focusedActions)
+  >>> runTArrow (runFreeCategory runAction dividingActions)
       -- bs
   >>> runFromList fromList
       -- b
   where
     runAction
-      :: Focused (ListAction k) xs ys
+      :: Dividing (ListAction k) xs ys
       -> TArrow r xs ys
-    runAction = runFocused (runListAction runK)
+    runAction = runDividing (runListAction runK)
 
 runFreeSymmetric
   :: forall r k a b. Symmetric r

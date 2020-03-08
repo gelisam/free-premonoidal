@@ -17,68 +17,68 @@ import Premonoidal
 import Tuple
 
 
-data Split (prePost :: [Type])
-           (pre     :: [Type])
-           (post    :: [Type])
-           where
-  SHere  :: Split as '[] as
-  SThere :: Split prePost pre post
-         -> Split (a ': prePost) (a ': pre) post
+data Divide (prePost :: [Type])
+            (pre     :: [Type])
+            (post    :: [Type])
+            where
+  DHere  :: Divide as '[] as
+  DThere :: Divide prePost pre post
+         -> Divide (a ': prePost) (a ': pre) post
 
-data Focused (action :: [Type] -> [Type] -> Type)
-             (as :: [Type])
-             (bs :: [Type])
-             where
-  Focused :: Split (pre ++ as ++ post) pre (as ++ post)
-          -> Split (as ++ post) as post
-          -> action as bs
-          -> Focused action
-                     (pre ++ as ++ post)
-                     (pre ++ bs ++ post)
+data Dividing (action :: [Type] -> [Type] -> Type)
+              (as :: [Type])
+              (bs :: [Type])
+              where
+  Dividing :: Divide (pre ++ as ++ post) pre (as ++ post)
+           -> Divide (as ++ post) as post
+           -> action as bs
+           -> Dividing action
+                       (pre ++ as ++ post)
+                       (pre ++ bs ++ post)
 
-runSplit
+runDivide
    :: Premonoidal r
-   => Split prePost pre post
+   => Divide prePost pre post
    -> ( r (Tuple prePost)
           (Tuple pre, Tuple post)
       , Length pre
       )
-runSplit = \case
-  SHere -> let r = -- post
+runDivide = \case
+  DHere -> let r = -- post
                    introL
                    -- ([], post)
            in (r, LNil)
-  SThere s -> let (rS, lenS) = runSplit s
+  DThere d -> let (rD, lenD) = runDivide d
                   r          = -- (a, pre ++ post)
-                               second rS
+                               second rD
                                -- (a, (pre, post))
                            >>> assocL
                                -- ((a, pre), post)
-              in (r, LCons lenS)
+              in (r, LCons lenD)
 
-runFocused
+runDividing
   :: Premonoidal r
   => (forall xs ys. action xs ys -> ( r (Tuple xs) (Tuple ys)
                                     , Length ys
                                     ))
-  -> Focused action as bs
+  -> Dividing action as bs
   -> TArrow r as bs
-runFocused runAction (Focused s1 s2 action)
-  = TArrow $ go runAction s1 s2 action
+runDividing runAction (Dividing d1 d2 action)
+  = TArrow $ go runAction d1 d2 action
   where
     go
       :: forall r action pre as bs post. Premonoidal r
       => (forall xs ys. action xs ys -> ( r (Tuple xs) (Tuple ys)
                                         , Length ys
                                         ))
-      -> Split (pre ++ as ++ post) pre (as ++ post)
-      -> Split (as ++ post) as post
+      -> Divide (pre ++ as ++ post) pre (as ++ post)
+      -> Divide (as ++ post) as post
       -> action as bs
       -> r (Tuple (pre ++ as ++ post))
            (Tuple (pre ++ bs ++ post))
-    go runAction s1 s2 action
-      = let (r1, lenPre) = runSplit s1
-            (r2, _lenAs) = runSplit s2
+    go runAction d1 d2 action
+      = let (r1, lenPre) = runDivide d1
+            (r2, _lenAs) = runDivide d2
             (rA, lenBs)  = runAction action
             r            = -- pre ++ as ++ post
                            r1
