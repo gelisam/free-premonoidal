@@ -17,6 +17,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Consume
                      , Divide
+                     , FreeCategory
                      , FreePremonoidal
                      , KnownLength
                      , List
