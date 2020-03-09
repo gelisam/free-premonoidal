@@ -23,7 +23,6 @@ data FreeCategory (k :: i -> i -> Type)
          -> FreeCategory k b c
          -> FreeCategory k a c
 
--- Free premonoidal category
 data FreePremonoidal (k :: Type -> Type -> Type)
                      (a :: Type)
                      (b :: Type)
@@ -34,7 +33,6 @@ data FreePremonoidal (k :: Type -> Type -> Type)
     -> FromList bs b
     -> FreePremonoidal k a b
 
--- Free symmetric premonoidal category
 data FreeSymmetric (k :: Type -> Type -> Type)
                    (a :: Type)
                    (b :: Type)
@@ -45,7 +43,6 @@ data FreeSymmetric (k :: Type -> Type -> Type)
     -> FromSet bs b
     -> FreeSymmetric k a b
 
--- Free semicartesian premonoidal category
 data FreeSemicartesian (k :: Type -> Type -> Type)
                        (a :: Type)
                        (b :: Type)
@@ -56,7 +53,6 @@ data FreeSemicartesian (k :: Type -> Type -> Type)
     -> FromSuperset bs b
     -> FreeSemicartesian k a b
 
--- Free cartesian premonoidal category
 data FreeCartesian (k :: Type -> Type -> Type)
                    (a :: Type)
                    (b :: Type)

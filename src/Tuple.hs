@@ -10,6 +10,7 @@ import Premonoidal
 import TypeLevel.Append
 
 
+-- Tuple [x1, x2, x3] = (x1, (x2, (x3, ())))
 type family Tuple as where
   Tuple '[]       = ()
   Tuple (a ': as) = (a, Tuple as)

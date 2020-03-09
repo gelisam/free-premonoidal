@@ -13,6 +13,10 @@ import Premonoidal
 import Tuple
 
 
+-- e.g.
+-- ToList ((a, ()), ((), b)) [(a, ()), ((), b)]
+-- ToList ((a, ()), ((), b)) [a, (), (), b]
+-- ToList ((a, ()), ((), b)) [a, b]
 data ToList (a :: Type)
             (as :: [Type])
             where
@@ -22,10 +26,12 @@ data ToList (a :: Type)
        -> ToList b bs
        -> ToList (a, b) (as ++ bs)
 
+-- e.g. FromList [a, b, c, d] ((a, b), (c, d))
 type FromList (as :: [Type])
               (a :: Type)
   = ToList a as
 
+-- e.g. FromSet [b, c, a, d] ((a, b), (c, d))
 data FromSet (as :: [Type])
              (a :: Type)
              where
@@ -33,6 +39,7 @@ data FromSet (as :: [Type])
           -> FromList xs a
           -> FromSet as a
 
+-- e.g. FromSet [x, b, c, y, a, d, z] ((a, b), (c, d))
 data FromSuperset (as :: [Type])
                   (a :: Type)
                   where
@@ -40,7 +47,10 @@ data FromSuperset (as :: [Type])
                -> FromList xs a
                -> FromSuperset as a
 
-
+-- e.g.
+-- f :: k (x1, x2) (y1, (y2, y3))
+-- ListAction _ _ action :: ListAction k [x1, x2]
+--                                       [y1, y2 y3]
 data ListAction (k :: Type -> Type -> Type)
                 (as :: [Type])
                 (bs :: [Type])

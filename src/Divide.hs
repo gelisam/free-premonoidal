@@ -17,6 +17,7 @@ import Premonoidal
 import Tuple
 
 
+-- e.g. Divide [a, b, c, x, y] [a, b, c] [x, y]
 data Divide (prePost :: [Type])
             (pre     :: [Type])
             (post    :: [Type])
@@ -25,6 +26,10 @@ data Divide (prePost :: [Type])
   DThere :: Divide prePost pre post
          -> Divide (a ': prePost) (a ': pre) post
 
+-- e.g.
+-- action :: r [x1, x2] [y1, y2, y3]
+-- Dividing _ _ action :: Dividing r [a, b, x1, x2, c, d, e]
+--                                   [a, b, y1, y2, y3, c, d, e]
 data Dividing (action :: [Type] -> [Type] -> Type)
               (as :: [Type])
               (bs :: [Type])

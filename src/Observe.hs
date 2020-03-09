@@ -14,6 +14,7 @@ import Premonoidal
 import Tuple
 
 
+-- e.g. Observe1 [a, b, x, c] x
 data Observe1 (as :: [Type])  -- all elements
               (x :: Type)     -- observed element
               where
@@ -21,6 +22,7 @@ data Observe1 (as :: [Type])  -- all elements
   OThere :: Observe1 as x
          -> Observe1 (y ': as) x
 
+-- e.g. ObserveN [a, b, x1, c, x2] [x1, x2]
 data ObserveN (as :: [Type])  -- all elements
               (xs :: [Type])  -- observed elements
               where
@@ -29,6 +31,10 @@ data ObserveN (as :: [Type])  -- all elements
         -> ObserveN as xs
         -> ObserveN as (x ': xs)
 
+-- e.g.
+-- action :: r [x1, x2] [y1, y2, y3]
+-- Observing _ action :: Observing r [a, b, x1, c, x2]
+--                                   [y1, y2, y3, a, b, x1, c, x2]
 data Observing (action :: [Type] -> [Type] -> Type)
                (as :: [Type])  -- original elements
                (bs :: [Type])  -- produced ++ original elements

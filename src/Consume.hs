@@ -14,6 +14,7 @@ import Premonoidal
 import Tuple
 
 
+-- e.g. Consume1 [a, b, x, c] x [a, b, c]
 data Consume1 (as :: [Type])  -- all elements
               (x :: Type)     -- consumed element
               (bs :: [Type])  -- remaining elements
@@ -22,6 +23,7 @@ data Consume1 (as :: [Type])  -- all elements
   CThere :: Consume1 as x bs
          -> Consume1 (y ': as) x (y ': bs)
 
+-- e.g. Consume1 [a, b, x1, c, x2] [x1, x2] [a, b, c]
 data ConsumeN (as :: [Type])  -- all elements
               (xs :: [Type])  -- consumed elements
               (bs :: [Type])  -- remaining elements
@@ -31,6 +33,10 @@ data ConsumeN (as :: [Type])  -- all elements
         -> ConsumeN bs xs cs
         -> ConsumeN as (x ': xs) cs
 
+-- e.g.
+-- action :: r [x1, x2] [y1, y2, y3]
+-- Consuming _ action :: Consuming r [a, b, x1, c, x2]
+--                                   [y1, y2, y3, a, b, c]
 data Consuming (action :: [Type] -> [Type] -> Type)
                (as :: [Type])  -- all elements
                (bs :: [Type])  -- produced ++ remaining elements
