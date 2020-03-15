@@ -107,3 +107,36 @@ runObserving runAction (Observing oN action)
                       >>> tappend lenYs (Proxy @as)
                           -- ys ++ as
         in r
+
+observeAll
+  :: Length as
+  -> ObserveN as as
+observeAll LNil
+  = ONil
+observeAll (LCons len)
+  = OCons OHere
+          (shift (observeAll len))
+  where
+    shift
+      :: ObserveN as xs
+      -> ObserveN (a ': as) xs
+    shift ONil = ONil
+    shift (OCons o1 oN) = OCons (OThere o1)
+                                (shift oN)
+
+singletonObserve1
+  :: Observe1 '[a] a
+singletonObserve1
+  = OHere
+
+singletonObserveN
+  :: ObserveN '[a] '[a]
+singletonObserveN
+  = observeAll one
+
+singletonObserving
+  :: Length as
+  -> action as bs
+  -> Observing action as (bs ++ as)
+singletonObserving len action
+  = Observing (observeAll len) action

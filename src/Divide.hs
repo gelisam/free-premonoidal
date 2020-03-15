@@ -97,3 +97,24 @@ runDividing runAction (Dividing d1 d2 action)
                        >>> tappend lenPre (Proxy @(bs ++ post))
                            -- pre ++ bs ++ post
          in r
+
+divide
+  :: Length pre
+  -> proxy post
+  -> Divide (pre ++ post) pre post
+divide = \case
+  LNil -> \_ -> DHere
+  LCons len -> \_ -> DThere (divide len Proxy)
+
+singletonDividing
+  :: forall action pre as proxy bs post
+   . Length pre
+  -> Length as
+  -> proxy post
+  -> action as bs
+  -> Dividing action (pre ++ as ++ post)
+                     (pre ++ bs ++ post)
+singletonDividing lenPre lenAs proxyPost action
+  = Dividing (divide lenPre (Proxy @(as ++ post)))
+             (divide lenAs proxyPost)
+             action

@@ -51,6 +51,11 @@ tsplit = \case
             >>> assocL
                 -- ((a, as), bs)
 
+singletonTuple
+  :: a -> Tuple '[a]
+singletonTuple a
+  = (a, ())
+
 
 newtype TArrow r as bs = TArrow
   { runTArrow :: r (Tuple as) (Tuple bs) }

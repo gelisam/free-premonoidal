@@ -82,7 +82,7 @@ runToListAndLengh = go1
       Atom -> let r = -- a
                       introR
                       -- (a, [])
-              in (r, LCons LNil)
+              in (r, one)
       Pair toListL toListR -> go2 toListL toListR
 
     go2
@@ -131,7 +131,7 @@ runFromList = fst . go1
       Atom -> let r = -- (a, [])
                       elimR
                       -- a
-              in (r, LCons LNil)
+              in (r, one)
       Pair fromListL fromListR -> go2 fromListL fromListR
 
     go2
@@ -182,7 +182,6 @@ runFromSuperset (FromSuperset cN fromList)
   >>> runFromList fromList
       -- a
 
-
 runListAction
   :: Premonoidal r
   => (forall x y. k x y -> r x y)
@@ -201,4 +200,24 @@ runListAction runK (ListAction fromList k toList)
                        -- bs
     in (r, lenBs)
 
+singletonToList
+  :: ToList a '[a]
+singletonToList
+  = Atom
 
+singletonFromList
+  :: FromList '[a] a
+singletonFromList
+  = Atom
+
+singletonFromSet
+  :: FromSet '[a] a
+singletonFromSet
+  = FromSet singletonConsumeN
+            singletonFromList
+
+singletonFromSuperset
+  :: FromSuperset '[a] a
+singletonFromSuperset
+  = FromSuperset singletonConsumeN
+                 singletonFromList

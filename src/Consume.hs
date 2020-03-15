@@ -1,5 +1,8 @@
 {-# LANGUAGE DataKinds, GADTs, KindSignatures, LambdaCase, RankNTypes, ScopedTypeVariables, TypeApplications, TypeOperators #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# OPTIONS_GHC -fplugin TypeLevel.Rewrite
+                -fplugin-opt=TypeLevel.Rewrite:TypeLevel.Append.RightIdentity
+                -fplugin-opt=TypeLevel.Rewrite:TypeLevel.Append.RightAssociative #-}
 module Consume where
 
 import Prelude hiding (id, (.))
@@ -110,3 +113,26 @@ runConsuming runAction (Consuming cN action)
                       >>> tappend lenYs (Proxy @rest)
                           -- ys ++ rest
         in r
+
+consumeAll
+  :: Length as
+  -> ConsumeN as as '[]
+consumeAll LNil = CNil
+consumeAll (LCons len) = CCons CHere (consumeAll len)
+
+singletonConsume1
+  :: Consume1 '[a] a '[]
+singletonConsume1
+  = CHere
+
+singletonConsumeN
+  :: ConsumeN '[a] '[a] '[]
+singletonConsumeN
+  = consumeAll one
+
+singletonConsuming
+  :: Length as
+  -> action as bs
+  -> Consuming action as bs
+singletonConsuming len action
+  = Consuming (consumeAll len) action

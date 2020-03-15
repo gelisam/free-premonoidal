@@ -33,3 +33,16 @@ runFreeCategory runK = \case
   Id        -> id
   f :>>> fs -> runK f
            >>> runFreeCategory runK fs
+
+mapFreeCategory
+  :: (forall x y. k x y -> r x y)
+  -> FreeCategory k a b
+  -> FreeCategory r a b
+mapFreeCategory f = \case
+  Id -> Id
+  k :>>> ks -> f k :>>> mapFreeCategory f ks
+
+singletonFreeCategory
+  :: k a b
+  -> FreeCategory k a b
+singletonFreeCategory k = k :>>> Id

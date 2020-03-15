@@ -16,6 +16,11 @@ lappend
 lappend LNil         lenB = lenB
 lappend (LCons lenA) lenB = LCons (lappend lenA lenB)
 
+one
+  :: Length '[a]
+one
+  = LCons LNil
+
 
 class KnownLength as where
   knownLength :: Length as
