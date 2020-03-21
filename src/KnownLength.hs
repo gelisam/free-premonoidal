@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds, GADTs, LambdaCase, RankNTypes, TypeOperators #-}
 module KnownLength where
 
+import Data.Proxy
 import TypeLevel.Append
 
 
@@ -20,6 +21,43 @@ one
   :: Length '[a]
 one
   = LCons LNil
+
+lcompare
+  :: (as ++ as') ~ (bs ++ bs')
+  => Length as
+  -> proxy as'
+  -> Length bs
+  -> proxy bs'
+  -> ( forall p post
+     . (as ++ (p ': post)) ~ bs
+    => Proxy p
+    -> Proxy post
+    -> r
+     )  -- ^ Length as <= Length bs
+  -> ( as ~ bs
+    => r
+     )  -- ^ Length as == Length bs
+  -> ( forall p post
+     . as ~ (bs ++ (p ': post))
+    => Proxy p
+    -> Proxy post
+    -> r
+     )
+  -> r
+lcompare LNil _
+         LNil _
+         _ ccEq _ = ccEq
+lcompare LNil _
+         (LCons _) _
+         ccLt _ _ = ccLt Proxy Proxy
+lcompare (LCons _) _
+         LNil _
+         _ _ ccGt = ccGt Proxy Proxy
+lcompare (LCons lenAs) proxyAs'
+         (LCons lenBs) proxyBs'
+         ccLt ccEq ccGt = lcompare lenAs proxyAs'
+                                   lenBs proxyBs'
+                                   ccLt ccEq ccGt
 
 
 class KnownLength as where
