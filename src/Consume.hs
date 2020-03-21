@@ -86,33 +86,30 @@ runConsumeN = \case
 
 runConsuming
   :: Symmetric r
-  => (forall xs ys. action xs ys -> ( r (Tuple xs) (Tuple ys)
-                                    , Length ys
-                                    ))
+  => (forall xs ys. action xs ys -> r (Tuple xs) (Tuple ys))
+  -> (forall xs ys. action xs ys -> Length ys)
   -> Consuming action as bs
   -> TArrow r as bs
-runConsuming runAction (Consuming cN action)
-  = TArrow $ go runAction cN action
+runConsuming runAction outputLength (Consuming cN action)
+  = TArrow $ go runAction outputLength cN action
   where
     go
       :: forall r action as xs ys rest. Symmetric r
-      => (forall xs ys. action xs ys -> ( r (Tuple xs) (Tuple ys)
-                                        , Length ys
-                                        ))
+      => (forall xs ys. action xs ys -> r (Tuple xs) (Tuple ys))
+      -> (forall xs ys. action xs ys -> Length ys)
       -> ConsumeN as xs rest
       -> action xs ys
       -> r (Tuple as)
            (Tuple (ys ++ rest))
-    go runAction cN action
-      = let (rA, lenYs) = runAction action
-            r           = -- as
-                          runConsumeN cN
-                          -- (xs, rest)
-                      >>> first rA
-                          -- (ys, rest)
-                      >>> tappend lenYs (Proxy @rest)
-                          -- ys ++ rest
-        in r
+    go runAction outputLength cN action
+        = -- as
+          runConsumeN cN
+          -- (xs, rest)
+      >>> first (runAction action)
+          -- (ys, rest)
+      >>> tappend (outputLength action)
+                  (Proxy @rest)
+          -- ys ++ rest
 
 consumeAll
   :: Length as

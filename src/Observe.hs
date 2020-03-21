@@ -78,35 +78,32 @@ runObserveN = \case
 
 runObserving
   :: Cartesian r
-  => (forall xs ys. action xs ys -> ( r (Tuple xs) (Tuple ys)
-                                    , Length ys
-                                    ))
+  => (forall xs ys. action xs ys -> r (Tuple xs) (Tuple ys))
+  -> (forall xs ys. action xs ys -> Length ys)
   -> Observing action as bs
   -> TArrow r as bs
-runObserving runAction (Observing oN action)
-  = TArrow $ go runAction oN action
+runObserving runAction outputLength (Observing oN action)
+  = TArrow $ go runAction outputLength oN action
   where
     go
       :: forall r action as xs ys. Cartesian r
-      => (forall xs ys. action xs ys -> ( r (Tuple xs) (Tuple ys)
-                                        , Length ys
-                                        ))
+      => (forall xs ys. action xs ys -> r (Tuple xs) (Tuple ys))
+      -> (forall xs ys. action xs ys -> Length ys)
       -> ObserveN as xs
       -> action xs ys
       -> r (Tuple as)
            (Tuple (ys ++ as))
-    go runAction oN action
-      = let (rA, lenYs) = runAction action
-            r           = -- as
-                          dup
-                          -- (as, as)
-                      >>> first (runObserveN oN)
-                          -- (xs, as)
-                      >>> first rA
-                          -- (ys, as)
-                      >>> tappend lenYs (Proxy @as)
-                          -- ys ++ as
-        in r
+    go runAction outputLength oN action
+        = -- as
+          dup
+          -- (as, as)
+      >>> first (runObserveN oN)
+          -- (xs, as)
+      >>> first (runAction action)
+          -- (ys, as)
+      >>> tappend (outputLength action)
+                  (Proxy @as)
+          -- ys ++ as
 
 observeAll
   :: Length as

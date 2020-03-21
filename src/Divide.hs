@@ -44,59 +44,57 @@ data Dividing (action :: [Type] -> [Type] -> Type)
 runDivide
    :: Premonoidal r
    => Divide prePost pre post
-   -> ( r (Tuple prePost)
-          (Tuple pre, Tuple post)
-      , Length pre
-      )
+   -> r (Tuple prePost)
+        (Tuple pre, Tuple post)
 runDivide = \case
-  DHere -> let r = -- post
-                   introL
-                   -- ([], post)
-           in (r, LNil)
-  DThere d -> let (rD, lenD) = runDivide d
-                  r          = -- (a, pre ++ post)
-                               second rD
-                               -- (a, (pre, post))
-                           >>> assocL
-                               -- ((a, pre), post)
-              in (r, LCons lenD)
+  DHere -> -- post
+           introL
+           -- ([], post)
+  DThere d -> -- (a, pre ++ post)
+              second (runDivide d)
+              -- (a, (pre, post))
+          >>> assocL
+              -- ((a, pre), post)
 
 runDividing
   :: Premonoidal r
-  => (forall xs ys. action xs ys -> ( r (Tuple xs) (Tuple ys)
-                                    , Length ys
-                                    ))
+  => (forall xs ys. action xs ys -> r (Tuple xs) (Tuple ys))
+  -> (forall xs ys. action xs ys -> Length ys)
   -> Dividing action as bs
   -> TArrow r as bs
-runDividing runAction (Dividing d1 d2 action)
-  = TArrow $ go runAction d1 d2 action
+runDividing runAction outputLength (Dividing d1 d2 action)
+  = TArrow $ go runAction outputLength d1 d2 action
   where
     go
       :: forall r action pre as bs post. Premonoidal r
-      => (forall xs ys. action xs ys -> ( r (Tuple xs) (Tuple ys)
-                                        , Length ys
-                                        ))
+      => (forall xs ys. action xs ys -> r (Tuple xs) (Tuple ys))
+      -> (forall xs ys. action xs ys -> Length ys)
       -> Divide (pre ++ as ++ post) pre (as ++ post)
       -> Divide (as ++ post) as post
       -> action as bs
       -> r (Tuple (pre ++ as ++ post))
            (Tuple (pre ++ bs ++ post))
-    go runAction d1 d2 action
-      = let (r1, lenPre) = runDivide d1
-            (r2, _lenAs) = runDivide d2
-            (rA, lenBs)  = runAction action
-            r            = -- pre ++ as ++ post
-                           r1
-                           -- (pre, as ++ post)
-                       >>> second r2
-                           -- (pre, (as, post))
-                       >>> second (first rA)
-                           -- (pre, (bs, post))
-                       >>> second (tappend lenBs (Proxy @post))
-                           -- (pre, bs ++ post)
-                       >>> tappend lenPre (Proxy @(bs ++ post))
-                           -- pre ++ bs ++ post
-         in r
+    go runAction outputLength d1 d2 action
+        = -- pre ++ as ++ post
+          runDivide d1
+          -- (pre, as ++ post)
+      >>> second (runDivide d2)
+          -- (pre, (as, post))
+      >>> second (first (runAction action))
+          -- (pre, (bs, post))
+      >>> second (tappend (outputLength action)
+                          (Proxy @post))
+          -- (pre, bs ++ post)
+      >>> tappend (prefixLength d1)
+                  (Proxy @(bs ++ post))
+          -- pre ++ bs ++ post
+
+prefixLength
+  :: Divide (pre ++ post) pre post
+  -> Length pre
+prefixLength = \case
+  DHere -> LNil
+  DThere d -> LCons (prefixLength d)
 
 divide
   :: Length pre

@@ -60,100 +60,89 @@ data ListAction (k :: Type -> Type -> Type)
              -> ToList b bs
              -> ListAction k as bs
 
-runToListAndLengh
+toListLength
+  :: ToList a as
+  -> Length as
+toListLength = \case
+  Unit -> LNil
+  Atom -> one
+  Pair l r -> toListLength l
+    `lappend` toListLength r
+
+fromListLength
+  :: FromList as a
+  -> Length as
+fromListLength = toListLength
+
+runToList
   :: Premonoidal r
   => ToList a as
-  -> ( r a (Tuple as)
-     , Length as
-     )
-runToListAndLengh = go1
+  -> r a (Tuple as)
+runToList = go1
   where
     go1
       :: Premonoidal r
       => ToList a as
-      -> ( r a (Tuple as)
-         , Length as
-         )
+      -> r a (Tuple as)
     go1 = \case
-      Unit -> let r = -- ()
-                      id
-                      -- []
-              in (r, LNil)
-      Atom -> let r = -- a
-                      introR
-                      -- (a, [])
-              in (r, one)
+      Unit -> -- ()
+              id
+              -- []
+      Atom -> -- a
+              introR
+              -- (a, [])
       Pair toListL toListR -> go2 toListL toListR
 
     go2
       :: Premonoidal r
       => ToList a as
       -> ToList b bs
-      -> ( r (a, b)
-             (Tuple (as ++ bs))
-         , Length (as ++ bs)
-         )
+      -> r (a, b)
+           (Tuple (as ++ bs))
     go2 toListL toListR
-      = let (rL, lenL) = go1 toListL
-            (rR, lenR) = go1 toListR
-            r          = -- (a, b)
-                         first rL
-                         -- (as, b)
-                     >>> second rR
-                         -- (as, bs)
-                     >>> tappend lenL lenR
-                         -- as ++ bs
-        in (r, lappend lenL lenR)
-
-runToList
-  :: Premonoidal r
-  => ToList a as
-  -> r a (Tuple as)
-runToList = fst . runToListAndLengh
+        = -- (a, b)
+          first (go1 toListL)
+          -- (as, b)
+      >>> second (go1 toListR)
+          -- (as, bs)
+      >>> tappend (toListLength toListL)
+                  (toListLength toListR)
+          -- as ++ bs
 
 runFromList
   :: Premonoidal r
   => FromList as a
   -> r (Tuple as) a
-runFromList = fst . go1
+runFromList = go1
   where
     go1
       :: Premonoidal r
       => FromList as a
-      -> ( r (Tuple as) a
-         , Length as
-         )
+      -> r (Tuple as) a
     go1 = \case
-      Unit -> let r = -- []
-                      id
-                      -- ()
-              in (r, LNil)
-      Atom -> let r = -- (a, [])
-                      elimR
-                      -- a
-              in (r, one)
+      Unit -> -- []
+              id
+              -- ()
+      Atom -> -- (a, [])
+              elimR
+              -- a
       Pair fromListL fromListR -> go2 fromListL fromListR
 
     go2
       :: Premonoidal r
       => FromList as a
       -> FromList bs b
-      -> ( r (Tuple (as ++ bs))
-             (a, b)
-         , Length (as ++ bs)
-         )
+      -> r (Tuple (as ++ bs))
+           (a, b)
     go2 fromListL fromListR
-      = let (rL, lenL) = go1 fromListL
-            (rR, lenR) = go1 fromListR
-            r          = -- as ++ bs
-                         tsplit lenL lenR
-                         -- (as, bs)
-                     >>> first rL
-                         -- (a, bs)
-                     >>> second rR
-                         -- (a, b)
-        in (r, lappend lenL lenR)
-
+        = -- as ++ bs
+          tsplit (fromListLength fromListL)
+                 (fromListLength fromListR)
+          -- (as, bs)
+      >>> first (go1 fromListL)
+          -- (a, bs)
+      >>> second (go1 fromListR)
+          -- (a, b)
 runFromSet
   :: Symmetric r
   => FromSet as a
@@ -186,19 +175,21 @@ runListAction
   :: Premonoidal r
   => (forall x y. k x y -> r x y)
   -> ListAction k as bs
-  -> ( r (Tuple as) (Tuple bs)
-     , Length bs
-     )
+  -> r (Tuple as) (Tuple bs)
 runListAction runK (ListAction fromList k toList)
-  = let (rBs, lenBs) = runToListAndLengh toList
-        r            = -- as
-                       runFromList fromList
-                       -- a
-                   >>> runK k
-                       -- b
-                   >>> rBs
-                       -- bs
-    in (r, lenBs)
+    = -- as
+      runFromList fromList
+      -- a
+  >>> runK k
+      -- b
+  >>> runToList toList
+      -- bs
+
+listActionOutputLength
+  :: ListAction k as bs
+  -> Length bs
+listActionOutputLength (ListAction _ _ toList)
+  = toListLength toList
 
 singletonToList
   :: ToList a '[a]

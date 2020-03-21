@@ -72,7 +72,7 @@ runFreePremonoidal runK (FreePremonoidal toList
     runAction
       :: Dividing (ListAction k) xs ys
       -> TArrow r xs ys
-    runAction = runDividing (runListAction runK)
+    runAction = runDividing (runListAction runK) listActionOutputLength
 
 runFreeSymmetric
   :: forall r k a b. Symmetric r
@@ -92,7 +92,7 @@ runFreeSymmetric runK (FreeSymmetric toList
     runAction
       :: Consuming (ListAction k) xs ys
       -> TArrow r xs ys
-    runAction = runConsuming (runListAction runK)
+    runAction = runConsuming (runListAction runK) listActionOutputLength
 
 runFreeSemicartesian
   :: forall r k a b. Semicartesian r
@@ -112,7 +112,7 @@ runFreeSemicartesian runK (FreeSemicartesian toList
     runAction
       :: Consuming (ListAction k) xs ys
       -> TArrow r xs ys
-    runAction = runConsuming (runListAction runK)
+    runAction = runConsuming (runListAction runK) listActionOutputLength
 
 runFreeCartesian
   :: forall r k a b. Cartesian r
@@ -130,4 +130,4 @@ runFreeCartesian runK (FreeCartesian toList
     runAction
       :: Observing (ListAction k) xs ys
       -> TArrow r xs ys
-    runAction = runObserving (runListAction runK)
+    runAction = runObserving (runListAction runK) listActionOutputLength
