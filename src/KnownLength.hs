@@ -23,36 +23,42 @@ one
   = LCons LNil
 
 lcompare
-  :: (as ++ as') ~ (bs ++ bs')
+  :: forall as as' bs bs' proxy1 proxy2 r. (as ++ as') ~ (bs ++ bs')
   => Length as
-  -> proxy as'
+  -> proxy1 as'
   -> Length bs
-  -> proxy bs'
-  -> ( forall p post
-     . (as ++ (p ': post)) ~ bs
-    => Proxy p
-    -> Proxy post
+  -> proxy2 bs'
+  -> ( forall x xs
+     . ( (as ++ (x ': xs)) ~ bs
+       , as' ~ ((x ': xs) ++ bs')
+       )
+    => Proxy x
+    -> Length xs
     -> r
      )  -- ^ Length as <= Length bs
-  -> ( as ~ bs
+  -> ( ( as ~ bs
+       , as' ~ bs'
+       )
     => r
      )  -- ^ Length as == Length bs
-  -> ( forall p post
-     . as ~ (bs ++ (p ': post))
-    => Proxy p
-    -> Proxy post
+  -> ( forall x xs
+     . ( as ~ (bs ++ (x ': xs))
+       , bs' ~ ((x ': xs) ++ as')
+       )
+    => Proxy x
+    -> Length xs
     -> r
-     )
+     )  -- ^ Length as >= Length bs
   -> r
 lcompare LNil _
          LNil _
          _ ccEq _ = ccEq
 lcompare LNil _
-         (LCons _) _
-         ccLt _ _ = ccLt Proxy Proxy
-lcompare (LCons _) _
+         (LCons len) _
+         ccLt _ _ = ccLt Proxy len
+lcompare (LCons len) _
          LNil _
-         _ _ ccGt = ccGt Proxy Proxy
+         _ _ ccGt = ccGt Proxy len
 lcompare (LCons lenAs) proxyAs'
          (LCons lenBs) proxyBs'
          ccLt ccEq ccGt = lcompare lenAs proxyAs'
