@@ -20,6 +20,7 @@ library
                      , Premonoidal
                      , TypeLevel.Axiom
                      , TypeLevel.List
+                     , TypeLevel.MultiSet
 
   -- other-modules:       
   build-depends:       base
