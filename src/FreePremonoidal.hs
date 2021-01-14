@@ -84,8 +84,16 @@ instance Premonoidal (FreePremonoidal q) where
      :>>> second xs qs
 
 
---runFreePremonoidal
---  :: forall r q a b. Premonoidal r
---  => (forall x y. q x y -> r x y)
---  -> FreePremonoidal q a b -> r a b
---runFreePremonoidal runQ
+runPremonoidalAtom
+  :: Premonoidal r
+  => (forall xs ys. q xs ys -> r xs ys)
+  -> PremonoidalAtom q as bs -> r as bs
+runPremonoidalAtom runQ (PremonoidalAtom xs q ys)
+  = first (second xs (runQ q)) ys
+
+runFreePremonoidal
+  :: Premonoidal r
+  => (forall xs ys. q xs ys -> r xs ys)
+  -> FreePremonoidal q as bs -> r as bs
+runFreePremonoidal runQ
+  = runFreeCategory (runPremonoidalAtom runQ)
