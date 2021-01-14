@@ -1,133 +1,74 @@
-{-# LANGUAGE GADTs, KindSignatures, RankNTypes, ScopedTypeVariables #-}
+{-# LANGUAGE DataKinds, GADTs, KindSignatures, FlexibleInstances, InstanceSigs, PolyKinds, RankNTypes, ScopedTypeVariables, TypeOperators, TypeSynonymInstances #-}
 module FreePremonoidal where
 
 import Control.Category
 import Data.Kind (Type)
+import Data.Proxy
 
-import Consume
-import Divide
 import FreeCategory
-import List
-import Observe
 import Premonoidal
-import Tuple
+import TypeLevel.Append
+import TypeLevel.List
 
 
-data FreePremonoidal (k :: Type -> Type -> Type)
-                     (a :: Type)
-                     (b :: Type)
+data PremonoidalAtom (q :: [k] -> [k] -> Type)
+                     (as :: [k])
+                     (bs :: [k])
                      where
-  FreePremonoidal
-    :: ToList a as
-    -> FreeCategory (Dividing (ListAction k)) as bs
-    -> FromList bs b
-    -> FreePremonoidal k a b
+  PremonoidalAtom
+    :: Proxy xs
+    -> q as bs
+    -> Proxy zs
+    -> PremonoidalAtom q (xs ++ as ++ zs)
+                         (xs ++ bs ++ zs)
 
-data FreeSymmetric (k :: Type -> Type -> Type)
-                   (a :: Type)
-                   (b :: Type)
-                   where
-  FreeSymmetric
-    :: ToList a as
-    -> FreeCategory (Consuming (ListAction k)) as bs
-    -> FromSet bs b
-    -> FreeSymmetric k a b
+firstAtom
+  :: PremonoidalAtom q as bs
+  -> Proxy zs
+  -> PremonoidalAtom q (as ++ zs) (bs ++ zs)
+firstAtom (PremonoidalAtom xs q ys) zs
+  = undefined
+  -- = PremonoidalAtom xs q (appendP ys zs)
 
-data FreeSemicartesian (k :: Type -> Type -> Type)
-                       (a :: Type)
-                       (b :: Type)
-                       where
-  FreeSemicartesian
-    :: ToList a as
-    -> FreeCategory (Consuming (ListAction k)) as bs
-    -> FromSuperset bs b
-    -> FreeSemicartesian k a b
+secondAtom
+  :: Proxy xs
+  -> PremonoidalAtom q as bs
+  -> PremonoidalAtom q (xs ++ as) (xs ++ bs)
+secondAtom xs (PremonoidalAtom ys q zs)
+  = undefined
+  -- = PremonoidalAtom (appendP xs ys) q zs
 
-data FreeCartesian (k :: Type -> Type -> Type)
-                   (a :: Type)
-                   (b :: Type)
-                   where
-  FreeCartesian
-    :: ToList a as
-    -> FreeCategory (Observing (ListAction k)) as bs
-    -> FromSuperset bs b
-    -> FreeCartesian k a b
+type FreePremonoidal q = FreeCategory (PremonoidalAtom q)
+
+instance Premonoidal (FreePremonoidal q) where
+  first Id _
+    = Id
+  first (q :>>> qs) zs
+        = firstAtom q zs
+     :>>> first qs zs
+  second _ Id
+    = Id
+  second xs (q :>>> qs)
+        = secondAtom xs q
+     :>>> second xs qs
 
 
-runFreePremonoidal
-  :: forall r k a b. Premonoidal r
-  => (forall x y. k x y -> r x y)
-  -> FreePremonoidal k a b -> r a b
-runFreePremonoidal runK (FreePremonoidal toList
-                                         dividingActions
-                                         fromList)
-    = -- a
-      runToList toList
-      -- as
-  >>> runTArrow (runFreeCategory runAction dividingActions)
-      -- bs
-  >>> runFromList fromList
-      -- b
-  where
-    runAction
-      :: Dividing (ListAction k) xs ys
-      -> TArrow r xs ys
-    runAction = runDividing (runListAction runK) listActionOutputLength
-
-runFreeSymmetric
-  :: forall r k a b. Symmetric r
-  => (forall x y. k x y -> r x y)
-  -> FreeSymmetric k a b -> r a b
-runFreeSymmetric runK (FreeSymmetric toList
-                                     consumingActions
-                                     fromSet)
-    = -- a
-      runToList toList
-      -- as
-  >>> runTArrow (runFreeCategory runAction consumingActions)
-      -- bs
-  >>> runFromSet fromSet
-      -- b
-  where
-    runAction
-      :: Consuming (ListAction k) xs ys
-      -> TArrow r xs ys
-    runAction = runConsuming (runListAction runK) listActionOutputLength
-
-runFreeSemicartesian
-  :: forall r k a b. Semicartesian r
-  => (forall x y. k x y -> r x y)
-  -> FreeSemicartesian k a b -> r a b
-runFreeSemicartesian runK (FreeSemicartesian toList
-                                             consumingActions
-                                             fromSuperset)
-    = -- a
-      runToList toList
-      -- as
-  >>> runTArrow (runFreeCategory runAction consumingActions)
-      -- bs
-  >>> runFromSuperset fromSuperset
-      -- b
-  where
-    runAction
-      :: Consuming (ListAction k) xs ys
-      -> TArrow r xs ys
-    runAction = runConsuming (runListAction runK) listActionOutputLength
-
-runFreeCartesian
-  :: forall r k a b. Cartesian r
-  => (forall x y. k x y -> r x y)
-  -> FreeCartesian k a b -> r a b
-runFreeCartesian runK (FreeCartesian toList
-                                     observingActions
-                                     fromSuperset)
-    = -- a
-      runToList toList
-      -- as
-  >>> runTArrow (runFreeCategory runAction observingActions)
-  >>> runFromSuperset fromSuperset
-  where
-    runAction
-      :: Observing (ListAction k) xs ys
-      -> TArrow r xs ys
-    runAction = runObserving (runListAction runK) listActionOutputLength
+--runFreePremonoidal
+--  :: forall r q a b. Premonoidal r
+--  => (forall x y. q x y -> r x y)
+--  -> FreePremonoidal q a b -> r a b
+--runFreePremonoidal runK (FreePremonoidal toList
+--                                         dividingActions
+--                                         fromList)
+--    = -- a
+--      runToList toList
+--      -- as
+--  >>> runTArrow (runFreeCategory runAction dividingActions)
+--      -- bs
+--  >>> runFromList fromList
+--      -- b
+--  where
+--    runAction
+--      :: Dividing (ListAction q) xs ys
+--      -> TArrow r xs ys
+--    runAction = runDividing (runListAction runK) listActionOutputLength

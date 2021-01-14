@@ -15,15 +15,10 @@ extra-source-files:  README.md
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Consume
-                     , Divide
-                     , FreeCategory
+  exposed-modules:     FreeCategory
                      , FreePremonoidal
-                     , KnownLength
-                     , List
-                     , Observe
                      , Premonoidal
-                     , Tuple
+                     , TypeLevel.List
 
   -- other-modules:       
   build-depends:       base
