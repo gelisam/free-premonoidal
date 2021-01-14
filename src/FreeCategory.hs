@@ -7,10 +7,11 @@ import Control.Category
 import Data.Kind (Type)
 
 
-data FreeCategory (q :: k -> k -> Type)
-                  (a :: k)
-                  (b :: k)
-                  where
+data FreeCategory
+       (q :: k -> k -> Type)
+       (a :: k)
+       (b :: k)
+       where
   Id     :: FreeCategory q a a
   (:>>>) :: q a b
          -> FreeCategory q b c

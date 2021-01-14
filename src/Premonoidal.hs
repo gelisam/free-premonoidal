@@ -27,12 +27,14 @@ import TypeLevel.Append
 --   first f >>> second g  =  second g >>> first f
 class Category q
    => Premonoidal (q :: [k] -> [k] -> Type) where
-  first  :: q as bs
-         -> Proxy zs
-         -> q (as ++ zs) (bs ++ zs)
-  second :: Proxy xs
-         -> q as bs
-         -> q (xs ++ as) (xs ++ bs)
+  first
+    :: q as bs
+    -> Proxy zs
+    -> q (as ++ zs) (bs ++ zs)
+  second
+    :: Proxy xs
+    -> q as bs
+    -> q (xs ++ as) (xs ++ bs)
 
 
 --instance Premonoidal (->) where

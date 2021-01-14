@@ -11,10 +11,11 @@ import TypeLevel.Append
 import TypeLevel.List
 
 
-data PremonoidalAtom (q :: [k] -> [k] -> Type)
-                     (as :: [k])
-                     (bs :: [k])
-                     where
+data PremonoidalAtom
+       (q :: [k] -> [k] -> Type)
+       (as :: [k])
+       (bs :: [k])
+       where
   PremonoidalAtom
     :: Proxy xs
     -> q as bs
