@@ -18,10 +18,12 @@ library
   exposed-modules:     FreeCategory
                      , FreePremonoidal
                      , Premonoidal
+                     , TypeLevel.Axiom
                      , TypeLevel.List
 
   -- other-modules:       
   build-depends:       base
+                     , constraints
                      , typelevel-rewrite-rules
   hs-source-dirs:      src
   ghc-options: -W -Wall

@@ -1,7 +1,7 @@
-{-# LANGUAGE DataKinds, GADTs, KindSignatures, FlexibleInstances, InstanceSigs, PolyKinds, RankNTypes, ScopedTypeVariables, TypeOperators, TypeSynonymInstances #-}
+{-# LANGUAGE DataKinds, GADTs, KindSignatures, FlexibleInstances, InstanceSigs, PolyKinds, RankNTypes, ScopedTypeVariables, TypeApplications, TypeOperators, TypeSynonymInstances #-}
+{-# OPTIONS -Wno-name-shadowing #-}
 module FreePremonoidal where
 
-import Control.Category
 import Data.Kind (Type)
 import Data.Proxy
 
@@ -22,23 +22,54 @@ data PremonoidalAtom (q :: [k] -> [k] -> Type)
     -> PremonoidalAtom q (xs ++ as ++ zs)
                          (xs ++ bs ++ zs)
 
+type FreePremonoidal q = FreeCategory (PremonoidalAtom q)
+
+
 firstAtom
   :: PremonoidalAtom q as bs
   -> Proxy zs
-  -> PremonoidalAtom q (as ++ zs) (bs ++ zs)
+  -> PremonoidalAtom q (as ++ zs)
+                       (bs ++ zs)
 firstAtom (PremonoidalAtom xs q ys) zs
-  = undefined
-  -- = PremonoidalAtom xs q (appendP ys zs)
+  = go xs q ys zs
+  where
+    go :: forall q xs as bs ys zs
+        . Proxy xs
+       -> q as bs
+       -> Proxy ys
+       -> Proxy zs
+       -> PremonoidalAtom q ((xs ++ as ++ ys) ++ zs)
+                            ((xs ++ bs ++ ys) ++ zs)
+    go xs q ys zs
+     -- ((xs ++ _) ++ ys) ++ zs
+      = withAssoc @(xs ++ as) @ys @zs
+      $ withAssoc @(xs ++ bs) @ys @zs
+     -- (xs ++ _) ++ (ys ++ zs)
+      $ PremonoidalAtom xs q (appendP ys zs)
 
 secondAtom
   :: Proxy xs
   -> PremonoidalAtom q as bs
   -> PremonoidalAtom q (xs ++ as) (xs ++ bs)
 secondAtom xs (PremonoidalAtom ys q zs)
-  = undefined
-  -- = PremonoidalAtom (appendP xs ys) q zs
-
-type FreePremonoidal q = FreeCategory (PremonoidalAtom q)
+  = go xs ys q zs
+  where
+    go :: forall q xs ys as bs zs
+        . Proxy xs
+       -> Proxy ys
+       -> q as bs
+       -> Proxy zs
+       -> PremonoidalAtom q (xs ++ (ys ++ as ++ zs))
+                            (xs ++ (ys ++ bs ++ zs))
+    go xs ys q zs
+     -- xs ++ ((ys ++ as) ++ zs)
+      = withAssoc @xs @ys @as
+      $ withAssoc @xs @ys @bs
+     -- (xs ++ (ys ++ as)) ++ zs
+      $ withAssoc @xs @(ys ++ as) @zs
+      $ withAssoc @xs @(ys ++ bs) @zs
+     -- ((xs ++ ys) ++ as) ++ zs
+      $ PremonoidalAtom (appendP xs ys) q zs
 
 instance Premonoidal (FreePremonoidal q) where
   first Id _
@@ -57,18 +88,4 @@ instance Premonoidal (FreePremonoidal q) where
 --  :: forall r q a b. Premonoidal r
 --  => (forall x y. q x y -> r x y)
 --  -> FreePremonoidal q a b -> r a b
---runFreePremonoidal runK (FreePremonoidal toList
---                                         dividingActions
---                                         fromList)
---    = -- a
---      runToList toList
---      -- as
---  >>> runTArrow (runFreeCategory runAction dividingActions)
---      -- bs
---  >>> runFromList fromList
---      -- b
---  where
---    runAction
---      :: Dividing (ListAction q) xs ys
---      -> TArrow r xs ys
---    runAction = runDividing (runListAction runK) listActionOutputLength
+--runFreePremonoidal runQ
