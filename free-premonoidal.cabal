@@ -15,6 +15,7 @@ library
   exposed-modules:     Control.Category.Free
                      , Control.Category.Premonoidal
                      , Control.Category.Premonoidal.Free
+                     , Data.Graph.Dag
                      , TypeLevel.Axiom
                      , TypeLevel.List
                      , TypeLevel.MultiSet
