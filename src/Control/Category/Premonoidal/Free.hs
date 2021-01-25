@@ -1,12 +1,12 @@
 {-# LANGUAGE DataKinds, GADTs, KindSignatures, FlexibleInstances, InstanceSigs, PolyKinds, RankNTypes, ScopedTypeVariables, TypeApplications, TypeOperators, TypeSynonymInstances #-}
 {-# OPTIONS -Wno-name-shadowing #-}
-module FreePremonoidal where
+module Control.Category.Premonoidal.Free where
 
 import Data.Kind (Type)
 import Data.Proxy
 
-import FreeCategory
-import Premonoidal
+import Control.Category.Free
+import Control.Category.Premonoidal
 import TypeLevel.Append
 import TypeLevel.List
 

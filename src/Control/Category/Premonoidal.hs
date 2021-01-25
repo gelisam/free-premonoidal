@@ -1,5 +1,5 @@
 {-# LANGUAGE DataKinds, KindSignatures, PolyKinds, TypeOperators #-}
-module Premonoidal where
+module Control.Category.Premonoidal where
 
 import Prelude hiding (id, (.))
 

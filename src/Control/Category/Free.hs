@@ -1,5 +1,5 @@
 {-# LANGUAGE GADTs, LambdaCase, PolyKinds, RankNTypes #-}
-module FreeCategory where
+module Control.Category.Free where
 
 import Prelude hiding (id, (.))
 
