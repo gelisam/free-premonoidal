@@ -1,4 +1,4 @@
-# free-categories
+# free-premonoidal
 
 This is a free category:
 
@@ -18,4 +18,12 @@ It is "free" in the sense that it can take any `k` which does _not_ have a `Cate
 
 That was pretty easy. But I want more. What about a free monoidal category? A free cartesian category? It turns out the additional structure required by these types of categories makes the problem a lot harder. This repo tracks my progress towards finding a free representation for those.
 
-You might also be interested in [premonoidal](https://github.com/gelisam/premonoidal), in which I do the same for a related hierarchy of structured categories. The main difference is that in the structures explored in this repo, the law `(f *** id) >>> (id *** g) = f *** g = (id *** g) >>> (f *** id)` holds, whereas in `premonoidal`, it doesn't. This means this repo is for `(->)`-like categories, because if you have two pure functions, it doesn't matter in which order you apply them, whereas `premonoidal` is for `Kleisli m`-like categories, because if you have two actions, the order in which you apply them does affects the order in which their side-effects occur.
+The kinds of categories I am interested in are:
+1. premonoidal categories
+2. symmetric premonoidal categories (linear types)
+3. semicartesian premonoidal categories (affine types)
+4. cartesian premonoidal categories (note: not _closed_ cartesian)
+
+You might be more familiar with monoidal categories than premonoidal categories. The main difference between the two is that in a monoidal category, the law `(f *** id) >>> (id *** g) = f *** g = (id *** g) >>> (f *** id)` holds, whereas in a premonoidal category, `first f >>> second g` is not necessarily equal to `second g >>> first f`. For example, the law does not hold if `f` and `g` have side-effects.
+
+I describe those kinds of categories in more details in [premonoidal](https://github.com/gelisam/premonoidal), a companion repo written in Agda with the more lofty goal of proving that each free structures I define in this repo is the mathematically-correct choice.
