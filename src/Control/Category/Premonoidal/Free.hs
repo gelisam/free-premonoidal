@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, GADTs, KindSignatures, FlexibleInstances, InstanceSigs, PolyKinds, RankNTypes, ScopedTypeVariables, TypeApplications, TypeOperators, TypeSynonymInstances #-}
+{-# LANGUAGE DataKinds, GADTs, FlexibleInstances, PolyKinds, RankNTypes, ScopedTypeVariables, TypeApplications, TypeOperators #-}
 {-# OPTIONS -Wno-name-shadowing #-}
 module Control.Category.Premonoidal.Free where
 

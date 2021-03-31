@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, GADTs, KindSignatures, TypeFamilies, TypeOperators #-}
+{-# LANGUAGE DataKinds, GADTs, TypeFamilies, TypeOperators #-}
 module Data.Graph.Dag where
 
 import Data.Proxy

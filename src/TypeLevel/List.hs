@@ -1,4 +1,4 @@
-{-# LANGUAGE AllowAmbiguousTypes, DataKinds, GADTs, PolyKinds, RankNTypes, ScopedTypeVariables, TypeFamilies, TypeOperators #-}
+{-# LANGUAGE AllowAmbiguousTypes, DataKinds, GADTs, PolyKinds, RankNTypes, ScopedTypeVariables, TypeOperators #-}
 module TypeLevel.List where
 
 import Data.Kind (Type)

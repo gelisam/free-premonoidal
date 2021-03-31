@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, KindSignatures, PolyKinds, TypeOperators #-}
+{-# LANGUAGE DataKinds, PolyKinds, TypeOperators #-}
 module Control.Category.Premonoidal where
 
 import Data.Kind (Type)

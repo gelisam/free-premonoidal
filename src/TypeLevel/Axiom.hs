@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, PolyKinds, ScopedTypeVariables, TypeOperators #-}
+{-# LANGUAGE PolyKinds, ScopedTypeVariables #-}
 module TypeLevel.Axiom where
 
 import Data.Constraint (Dict(Dict))
