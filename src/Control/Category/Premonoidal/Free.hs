@@ -4,10 +4,10 @@ module Control.Category.Premonoidal.Free where
 
 import Data.Kind (Type)
 import Data.Proxy
+import TypeLevel.Append
 
 import Control.Category.Free
 import Control.Category.Premonoidal
-import TypeLevel.Append
 import TypeLevel.List
 
 
