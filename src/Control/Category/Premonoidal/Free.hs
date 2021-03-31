@@ -12,23 +12,23 @@ import Control.Category.Premonoidal
 import TypeLevel.List
 
 
-data PremonoidalAtom
+data Atom
        (q :: [k] -> [k] -> Type)
        (as :: [k])
        (bs :: [k])
        where
-  PremonoidalAtom
+  Atom
     :: Proxy xs
     -> q as bs
     -> Proxy zs
-    -> PremonoidalAtom q (xs ++ as ++ zs)
-                         (xs ++ bs ++ zs)
+    -> Atom q (xs ++ as ++ zs)
+              (xs ++ bs ++ zs)
 
-type FreePremonoidal q = FreeCategory (PremonoidalAtom q)
+type Free q = FreeCategory (Atom q)
 
 
-instance Premonoidal (PremonoidalAtom q) where
-  widen ws (PremonoidalAtom xs q ys) zs
+instance Premonoidal (Atom q) where
+  widen ws (Atom xs q ys) zs
     = go ws xs q ys zs
     where
       go :: forall q ws xs as bs ys zs
@@ -37,8 +37,8 @@ instance Premonoidal (PremonoidalAtom q) where
          -> q as bs
          -> Proxy ys
          -> Proxy zs
-         -> PremonoidalAtom q (ws ++ (xs ++ as ++ ys) ++ zs)
-                              (ws ++ (xs ++ bs ++ ys) ++ zs)
+         -> Atom q (ws ++ (xs ++ as ++ ys) ++ zs)
+                   (ws ++ (xs ++ bs ++ ys) ++ zs)
       go ws xs q ys zs
        -- (ws ++ ((xs ++ _) ++ ys)) ++ zs
         = withAssoc @ws @(xs ++ as) @ys
@@ -50,9 +50,9 @@ instance Premonoidal (PremonoidalAtom q) where
         $ withAssoc @(ws ++ xs ++ as) @ys @zs
         $ withAssoc @(ws ++ xs ++ bs) @ys @zs
        -- ((ws ++ xs) ++ _) ++ (ys ++ zs)
-        $ PremonoidalAtom (appendP ws xs) q (appendP ys zs)
+        $ Atom (appendP ws xs) q (appendP ys zs)
 
-instance Premonoidal (FreePremonoidal q) where
+instance Premonoidal (Free q) where
   widen _ Id _
     = Id
   widen xs (q :>>> qs) zs
@@ -60,16 +60,16 @@ instance Premonoidal (FreePremonoidal q) where
      :>>> widen xs qs zs
 
 
-runPremonoidalAtom
+runAtom
   :: Premonoidal r
   => (forall xs ys. q xs ys -> r xs ys)
-  -> PremonoidalAtom q as bs -> r as bs
-runPremonoidalAtom runQ (PremonoidalAtom xs q ys)
+  -> Atom q as bs -> r as bs
+runAtom runQ (Atom xs q ys)
   = widen xs (runQ q) ys
 
-runFreePremonoidal
+runFree
   :: (Category r, Premonoidal r)
   => (forall xs ys. q xs ys -> r xs ys)
-  -> FreePremonoidal q as bs -> r as bs
-runFreePremonoidal runQ
-  = runFreeCategory (runPremonoidalAtom runQ)
+  -> Free q as bs -> r as bs
+runFree runQ
+  = runFreeCategory (runAtom runQ)
