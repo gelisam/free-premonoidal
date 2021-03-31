@@ -1,12 +1,8 @@
 {-# LANGUAGE DataKinds, KindSignatures, PolyKinds, TypeOperators #-}
 module Control.Category.Premonoidal where
 
-import Prelude hiding (id, (.))
-
-import Control.Category
 import Data.Kind (Type)
 import Data.Proxy
-
 import TypeLevel.Append
 
 
@@ -73,8 +69,7 @@ import TypeLevel.Append
 -- >   first f >>> second g  =  second g >>> first f
 --
 -- The above law does _not_ need to hold for Premonoidal instances.
-class Category q
-   => Premonoidal (q :: [k] -> [k] -> Type) where
+class Premonoidal (q :: [k] -> [k] -> Type) where
   widen
     :: Proxy xs
     -> q as bs
