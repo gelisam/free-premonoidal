@@ -1,4 +1,4 @@
-{-# LANGUAGE AllowAmbiguousTypes, DataKinds, PolyKinds, RankNTypes, ScopedTypeVariables, TypeFamilies, TypeOperators #-}
+{-# LANGUAGE AllowAmbiguousTypes, DataKinds, PolyKinds, RankNTypes, RoleAnnotations, ScopedTypeVariables, TypeFamilies, TypeOperators #-}
 module TypeLevel.MultiSet where
 
 import Data.Constraint (Dict, withDict)
@@ -8,7 +8,8 @@ import TypeLevel.Append
 import TypeLevel.Axiom
 
 
-type family MultiSet (as :: [k])
+type role MultiSet nominal
+data MultiSet (as :: [k])
 
 nilP :: Proxy (MultiSet '[])
 nilP = Proxy
