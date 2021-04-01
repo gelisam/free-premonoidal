@@ -1,77 +1,151 @@
-{-# LANGUAGE DataKinds, PolyKinds, TypeOperators #-}
+{-# LANGUAGE ConstraintKinds, DataKinds, PolyKinds, TypeOperators #-}
 module Control.Category.Premonoidal where
 
+import Control.Category (Category)
 import Data.Kind (Type)
 import Data.Proxy
 import TypeLevel.Append
 
 
--- A Premonoidal category can be seen as a Category with more structure, or as
--- Linear types with more restrictions.
+-- | Instances of Premonoidal can be widened to work over a wider input. That
+-- is, a narrow morphism which accepts a given list of inputs can be widened
+-- into a wide morphism which accepts more elements before and after that
+-- narrow input, by returning them unchanged before and after the narrow
+-- output.
 --
--- In a Category, the output of each morphism is the input of the next
--- morphism; that is, this input is completely consumed by the next morphism.
--- With Premonoidal, a morphism is allowed to only consume a fraction of its
--- input. The way this works is that there are two morphisms: the thin
--- morphism, which only consumes a fraction of its input, and the wide
--- morphism, which consumes the entire input, but does so in a way which leaves
--- untouched the parts of the input which are not consumed by the thin
--- morphism.
---
--- In Premonoidal, the portion which is consumed must be a sub-list of
--- consecutive elements of the input. Linear lifts that restrictions to allow
--- any subset of the input. Premonoidal's restrictiveness is sometimes useful.
--- For example, in https://github.com/gelisam/category-syntax#wire-diagrams,
--- the values represent wires and we want to force the user to choose which
--- wire passes over the other whenever the wires cross.
---
--- For example, the wire diagram
---
---     a  b     c  d
---     |  |     |  |
---      \ |     |  |
---        \     |  |
---        | \   |  |
---       /   | /   |
---      |    /     |
---      |  / |     | _
---      | |  |     /   \
---      | |  |   / |    |
---      | |  |  |  |    |
---      | |  |  |  |    |
---      b c  a  e  d    f
---
--- Can be represented as
---
--- >     -- [a, b, c, d]
--- >     widen (Proxy @[])
--- >           (over :: q [a, b] [b, a])
--- >           (Proxy @[c, d])
--- >     -- [b, a, c, d]
--- > >>> widen (Proxy @[b])
--- >           (under :: q [a, c] [c, a])
--- >           (Proxy @[d])
--- >     -- [b, c, a, d]
--- > >>> widen (Proxy @[b, c, a, d])
--- >           (cap :: q [] [e, f])
--- >           (Proxy @[])
--- >     -- [b, c, a, d, e, f]
--- > >>> widen (Proxy @[b, c, a])
--- >           (under :: q [d, e] [e, d])
--- >           (Proxy @[f])
--- >     -- [b, c, a, e, d, f]
---
--- Each morphism may perform arbitrary side-effects. This is different from a
--- monoidal category, in which side-effects are forbidden because of the
--- following law, which requires effects to commute:
---
--- >   (f *** id) >>> (id *** g) = f *** g = (id *** g) >>> (f *** id)
--- >   first f >>> second g  =  second g >>> first f
---
--- The above law does _not_ need to hold for Premonoidal instances.
+-- The name comes from "premonoidal category", which we cover in
+-- 'PremonoidalCat'.
 class Premonoidal (q :: [k] -> [k] -> Type) where
   widen
     :: Proxy xs
     -> q as bs
     -> Proxy zs
     -> q (xs ++ as ++ zs) (xs ++ bs ++ zs)
+
+-- | A type which has both 'Premonoidal' and 'Category' instances is
+-- automatically a "strict premonoidal category" with tensor '(++)', which
+-- means its values can be visualized as a string diagram in which the wires
+-- never cross:
+--
+-- @
+--     a  b     c  d
+--     |  |     |  |
+--      \ |     |  |
+--       +-+    |  |
+--       |f|    |  |        f :: q [a, b] [b, a]
+--       +-+   /   |
+--        |\  |    |
+--        b a c    |
+--        | | |    |
+--       /  +-+    |
+--     /    |g|    |        g :: q [a, c] [c, a]
+--   /      +-+    | +-+
+--  |      / |     | |h|    h :: q [] [e, f]
+--  |     c  a     | +-+
+--  |     |  |     | | |
+--  |     |  |     d e f
+--  |     |  |     |/  |
+--  |     |  |    +-+  |
+--   \   /   |    |i|  |    i :: [d, e] [e, d]
+--    +-+    |    +-+  |
+--    |j|    |   / |   |    j :: q [b, c] []
+--    +-+    |  |  |   |
+--           |  |  |   |
+--           |  |  |   |
+--           a  e  d   f
+-- @
+--
+-- That is because the narrow morphisms @f@, @g@, @h@, @i@, and @j@ can be
+-- widened to operate on the entire row of wires:
+--
+-- @
+--     a  b     c  d
+--     |  |     |  |
+--      \ |     |  |
+--     +-------------+
+--     |   widen f   |      :: q [a, b, c, d] [b, a, c, d]
+--     +-------------+
+--        |\  |    |
+--        b a c    d
+--        | | |    |
+--  +---------------+
+--  |    widen g    |       :: q [b, a, c, d] [b, c, a, d]
+--  +---------------+
+--   /     / |     |
+--  b     c  a     d
+--  |     |  |     |
+-- +-------------------+
+-- |      widen h      |    :: q [b, c, a, d] [b, c, a, d, e, f]
+-- +-------------------+
+--  |     |  |     | |\
+--  b     c  a     d e f
+--  |     |  |     |/  |
+-- +---------------------+
+-- |       widen j       |  :: [b, c, a, d, e, f] [b, c, a, e, d, f]
+-- +---------------------+
+--  |     |  |   / |   |
+--  b     c  a  e  d   f
+--   \   /   |  |  |   |
+--  +-------------------+
+--  |      widen i      |   :: q [b, c, a, e, d, f] [a, e, d, f]
+--  +-------------------+
+--           |  |  |   |
+--           a  e  d   f
+-- @
+--
+-- This kind of string diagram is often used to visually convey the laws like
+--
+-- @
+-- (f *** id) >>> (id *** g) = f *** g = (id *** g) >>> (f *** id)
+-- @
+--
+-- as the more visually-striking
+--
+-- @
+--   |   |       |   |       |   |
+--  +-+  |       |   |       |  +-+
+--  |f|  |      +-+ +-+      |  |g|
+--  +-+ +-+  =  |f| |g|  =  +-+ +-+
+--   |  |g|     +-+ +-+     |f|  |
+--   |  +-+      |   |      +-+  |
+--   |   |       |   |       |   |
+-- @
+--
+-- If this law holds, then the type is not just a strict premonoidal category,
+-- it is also a strict monoidal category.
+--
+-- Monoidal categories are more commonly-known, but premonoidal categories are
+-- nevertheless quite useful as they allow us to model computations which
+-- perform side effects. Monoidal categories are not suitable for that, as the
+-- above law would require the computation to be the same regardless of the
+-- order in which its side-effects are applied. The advantage of PremonoidalCat
+-- over 'Monad' and 'Arrow' for this purpose is that it is possible to define a
+-- type for which the dataflow graph is known statically, as PremonoidalCat
+-- does not require the type to support operations like '(>>=)' and 'arr' which
+-- involve opaque functions.
+--
+-- One especially nice premonoidal category is the one whose atomic operations
+-- describe wire crossings and wire bendings:
+--
+-- @
+--     a  b     c  d
+--     |  |     |  |
+--      \ |     |  |
+--        \     |  |        over :: q [a, b] [b, a]
+--        | \   |  |
+--       /   | /   |
+--     /     /     |        under :: q [a, c] [c, a]
+--   /     / |     | _      cap :: q [] [e, f]
+--  |     |  |     /   \    under :: [d, e] [e, d]
+--   \   /   |   / |    |
+--     ‾     |  |  |    |   cup :: q [b, c] []
+--           |  |  |    |
+--           a  e  d    f
+-- @
+--
+-- If you do want to allow your wires to cross, but you do not need to
+-- distinguish between over- and under-crossings and you do not consider
+-- wire-crossings to be a side-effect, then 'LinearCat' might be a better fit
+-- than 'PremonoidalCat'
+type PremonoidalCat (q :: [k] -> [k] -> Type)
+  = (Premonoidal q, Category q)
